@@ -17,7 +17,7 @@ API, WebSocket server, and background workers for TA-DA.
 ## Environment
 
 - `RENDER_BACKEND_URL` — Public URL of this backend (used by frontend and Zoom app)
-- `ELASTIC_CLOUD_ID`, `ELASTIC_API_KEY` — For indexing Zoom transcript chunks into `ta-da-latest`
+- `ELASTICSEARCH_URL`, `ELASTIC_API_KEY` — For indexing Zoom transcript chunks into `ta-da-latest` (no Cloud ID required; see [elastic/INDEXING.md](../elastic/INDEXING.md))
 
 ## Related
 

@@ -19,8 +19,8 @@ Elastic Cloud and search stack for TA-DA’s “course memory” and retrieval.
 
 ## Environment
 
-- `ELASTIC_CLOUD_ID`
-- `ELASTIC_API_KEY`
+- **Indexing (e.g. transcript chunks):** `ELASTICSEARCH_URL`, `ELASTIC_API_KEY` — no Cloud ID required. See [INDEXING.md](INDEXING.md) and [scripts/index-test-chunk.py](scripts/index-test-chunk.py).
+- **MCP / Kibana:** Kibana URL and API key (see MCP section below).
 
 ---
 
@@ -107,7 +107,7 @@ Any service (Zoom agent, backend, or other) that needs to **index transcript chu
 
 - **Full contract (payload, fields, examples, how to index):** [INDEXING.md](INDEXING.md)
 - **Index creation (one-time):** [indices/README.md](indices/README.md) or script [scripts/create-ta-da-latest-index.sh](scripts/create-ta-da-latest-index.sh)
-- **Code example (Node.js):** [scripts/append-transcript-chunk.example.js](scripts/append-transcript-chunk.example.js)
+- **Indexing example (Python):** [scripts/index-test-chunk.py](scripts/index-test-chunk.py) — reference script to index chunks. Uses **`ELASTICSEARCH_URL`** and **`ELASTIC_API_KEY`** only (no Cloud ID). Requires `requirements-elastic.txt` and a venv.
 
 ---
 

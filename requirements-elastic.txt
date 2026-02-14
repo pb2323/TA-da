@@ -1,0 +1,2 @@
+# For Elastic Python scripts (e.g. index-test-chunk.py)
+elasticsearch>=8.0.0

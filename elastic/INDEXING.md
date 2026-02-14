@@ -66,11 +66,22 @@ Every document **must** include these fields. Optional fields can be omitted or 
   - **Index:** `ta-da-latest`
   - **Document body:** The JSON above (required + any optional fields).
   - **Document ID:** Omit `_id` so Elasticsearch auto-generates one. That keeps every chunk a separate document (append-only).
-- **Authentication:** Use your Elasticsearch endpoint (or Elastic Cloud URL) and an API key with **index** and **create_doc** (or equivalent) permission on `ta-da-latest`.
+- **Authentication:** Use your Elasticsearch URL and an API key with **index** / **create_doc** permission on `ta-da-latest`. You do **not** need Cloud ID — the Elasticsearch base URL and API key are enough.
 
-### Example (Node.js)
+### Example (Python)
 
-See [scripts/append-transcript-chunk.example.js](scripts/append-transcript-chunk.example.js) for a minimal Node.js example (single chunk and bulk). Requires `@elastic/elasticsearch`, `ELASTIC_CLOUD_ID`, and `ELASTIC_API_KEY`.
+Use [scripts/index-test-chunk.py](scripts/index-test-chunk.py) as the reference. It needs only **`ELASTICSEARCH_URL`** and **`ELASTIC_API_KEY`** (no Cloud ID).
+
+**Setup (from repo root):**
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-elastic.txt
+export ELASTICSEARCH_URL="https://YOUR_ES_HOST:443"   # optional if default in script
+export ELASTIC_API_KEY="your-api-key"
+python3 elastic/scripts/index-test-chunk.py
+```
+
+The script connects with `Elasticsearch(ES_URL, api_key=API_KEY)` and indexes one document. Adapt the `test_chunk` dict for your chunks (same fields as section 2). For bulk indexing, use the same client and loop `client.index(index=index_name, document=doc)` or the [Bulk API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html).
 
 ### Example (curl)
 
