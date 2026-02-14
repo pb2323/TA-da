@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Transcripts</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Live Meeting Transcripts</h1>
+            <div class="status-bar">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="transcripts-container">
+                <div class="meeting-info" id="meetingInfo">
+                    <p class="empty-state">Waiting for meeting to start...</p>
+                </div>
+
+                <div class="transcripts-section">
+                    <h2>Transcripts</h2>
+                    <div class="transcripts-list" id="transcriptsList">
+                        <p class="empty-state">Transcripts will appear here when someone speaks.</p>
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <div class="stat-card">
+                        <h3>Total Chunks</h3>
+                        <div class="stat-value" id="totalChunks">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Speakers</h3>
+                        <div class="stat-value" id="speakerCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Last Updated</h3>
+                        <div class="stat-value stat-time" id="lastUpdate">-</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/logger.js"></script>
+    <script>
+        window.LOG_LEVEL = window.LOG_LEVEL || 'ERROR';
+    </script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
