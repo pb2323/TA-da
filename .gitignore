@@ -1,0 +1,18 @@
+# Virtual env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# Node
+node_modules/
+
+# Env and secrets
+.env
+.env.local
+*.pem

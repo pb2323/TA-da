@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "elastic-agent-builder": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://my-elasticsearch-project-f5fc5f.kb.us-west1.gcp.elastic.cloud/api/agent_builder/mcp",
+        "--header",
+        "Authorization:ApiKey YOUR_ELASTIC_API_KEY"
+      ]
+    }
+  }
+}

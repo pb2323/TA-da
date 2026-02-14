@@ -1,0 +1,49 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "dynamic": "true",
+    "properties": {
+      "meeting_id": {
+        "type": "keyword",
+        "doc_values": true
+      },
+      "meeting_start_time": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "chunk_index": {
+        "type": "integer"
+      },
+      "text": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 512
+          }
+        }
+      },
+      "start_time": {
+        "type": "float",
+        "doc_values": true
+      },
+      "end_time": {
+        "type": "float",
+        "doc_values": true
+      },
+      "speaker_id": {
+        "type": "keyword"
+      },
+      "received_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "source": {
+        "type": "keyword"
+      }
+    }
+  }
+}
