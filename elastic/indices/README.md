@@ -58,3 +58,39 @@ PUT /ta-da-latest
 ```
 
 Or use the script: `../scripts/create-ta-da-latest-index.sh` (requires `ELASTICSEARCH_URL` and `ELASTIC_API_KEY`).
+
+---
+
+### Delete all documents in `ta-da-latest` (keep index)
+
+**Kibana Dev Tools:**
+```json
+POST /ta-da-latest/_delete_by_query
+{
+  "query": { "match_all": {} }
+}
+```
+
+**Python (same env as index-test-chunk.py):**
+```bash
+export ELASTIC_API_KEY="your-api-key"
+python3 elastic/scripts/delete-all-docs.py
+```
+Optional: `INDEX_NAME=other-index` to target a different index.
+
+---
+
+## Agent indices (Tutor + ClassOps)
+
+Shared storage for the Fetch.ai agents. Create all at once with [../scripts/create-agent-indices.py](../scripts/create-agent-indices.py) (requires `ELASTICSEARCH_URL`, `ELASTIC_API_KEY`).
+
+| Index | Purpose |
+|-------|--------|
+| **ta-da-users** | `user_id`, `name`, `role` (student/instructor) |
+| **ta-da-sessions** | `session_id`, `meeting_id`, `start_time`, `active_concept` |
+| **ta-da-concept-cards** | `session_id`, `concept_id`, `title`, `short_explain`, `example`, `timestamp` |
+| **ta-da-signals** | `session_id`, `user_id`, `concept_id`, `signal_type` (lost/kinda/gotit), `time` |
+| **ta-da-tutor-turns** | `session_id`, `user_id`, `concept_id`, `turn_id`, `user_msg`, `agent_msg`, `stage`, `correctness` |
+| **ta-da-session-state** | ClassOps output: `session_id`, `top_concept_id`, `re_explain_suggestion`, `poll_question`, `updated_at` |
+
+- **Mapping files:** [ta-da-users.mapping.json](ta-da-users.mapping.json), [ta-da-sessions.mapping.json](ta-da-sessions.mapping.json), [ta-da-concept-cards.mapping.json](ta-da-concept-cards.mapping.json), [ta-da-signals.mapping.json](ta-da-signals.mapping.json), [ta-da-tutor-turns.mapping.json](ta-da-tutor-turns.mapping.json), [ta-da-session-state.mapping.json](ta-da-session-state.mapping.json).

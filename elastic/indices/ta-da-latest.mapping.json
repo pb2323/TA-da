@@ -18,13 +18,11 @@
         "type": "integer"
       },
       "text": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 512
-          }
-        }
+        "type": "text"
+      },
+      "content":{
+        "type": "semantic_text",
+        "inference_id": ".jina-embeddings-v3"
       },
       "start_time": {
         "type": "float",
