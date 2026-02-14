@@ -72,8 +72,8 @@ TA-DA is designed to be award-eligible across:
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-org/ta-da
-cd ta-da
+git clone https://github.com/pb2323/TA-da
+cd TA-da
 ```
 
 ### 2. Install dependencies
