@@ -94,30 +94,30 @@ TEST_CHUNKS = [
     #     "start_time": 65.0,
     #     "end_time": 82.0,
     # },
-    {
-        "meeting_id": "test-meeting-001",
-        "chunk_index": 5,
-        "text": (
-            "Hash indexes use a hash function to map keys to buckets. Lookup is O(1) on average for equality checks. "
-            "Hash indexes are excellent for point lookups but cannot support range queries or ordering. "
-            "Collision handling: chaining links items in the same bucket; open addressing finds another slot. "
-            "Use hash indexes when you only need exact-match queries, not ranges or sorts."
-        ),
-        "start_time": 82.0,
-        "end_time": 95.0,
-    },
     # {
     #     "meeting_id": "test-meeting-001",
-    #     "chunk_index": 6,
+    #     "chunk_index": 5,
     #     "text": (
-    #         "Query optimization turns a logical query plan into an efficient physical plan. "
-    #         "The optimizer considers costs: sequential vs index scan, join order, and operator choices. "
-    #         "Nested loop join works well when one table is small; hash join when both fit in memory; merge sort join when data is sorted. "
-    #         "EXPLAIN shows the chosen plan; use it to find missing indexes or expensive operations."
+    #         "Hash indexes use a hash function to map keys to buckets. Lookup is O(1) on average for equality checks. "
+    #         "Hash indexes are excellent for point lookups but cannot support range queries or ordering. "
+    #         "Collision handling: chaining links items in the same bucket; open addressing finds another slot. "
+    #         "Use hash indexes when you only need exact-match queries, not ranges or sorts."
     #     ),
-    #     "start_time": 95.0,
-    #     "end_time": 112.0,
+    #     "start_time": 82.0,
+    #     "end_time": 95.0,
     # },
+    {
+        "meeting_id": "test-meeting-001",
+        "chunk_index": 6,
+        "text": (
+            "Query optimization turns a logical query plan into an efficient physical plan. "
+            "The optimizer considers costs: sequential vs index scan, join order, and operator choices. "
+            "Nested loop join works well when one table is small; hash join when both fit in memory; merge sort join when data is sorted. "
+            "EXPLAIN shows the chosen plan; use it to find missing indexes or expensive operations."
+        ),
+        "start_time": 95.0,
+        "end_time": 112.0,
+    },
     # {
     #     "meeting_id": "test-meeting-001",
     #     "chunk_index": 7,

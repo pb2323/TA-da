@@ -260,6 +260,10 @@
 
   // ==================== ASK QUESTION MODAL (CHATBOT) ====================
   const API_CONVERSE = '/api/agent/converse';
+  const API_CONCEPT_CARDS = '/api/concept-cards';
+
+  /** Polling interval for concept cards (ms) */
+  const CONCEPT_CARDS_POLL_INTERVAL_MS = 5000;
 
   /**
    * Open the ask question modal
@@ -483,34 +487,28 @@
 
   // ==================== CONCEPT CARDS ====================
   /**
-   * Handle new concept from backend
-   * @param {Object} data - Concept data
+   * Map API hit from GET /concept-cards to internal concept shape
+   * @param {Object} hit - { _id, title, short_explain, example, timestamp, ... }
    */
-  function handleNewConcept(data) {
-    const concept = {
-      id: data.id || `concept-${Date.now()}`,
-      title: data.title || 'New Concept',
-      description: data.description || '',
-      confidence: data.confidence || Math.floor(Math.random() * 30) + 70,
-      timestamp: data.timestamp || Date.now(),
+  function mapHitToConcept(hit) {
+    const description = [hit.short_explain, hit.example].filter(Boolean).join(' ');
+    return {
+      id: hit._id || hit.concept_id || `concept-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      title: hit.title || 'Untitled Concept',
+      description: description || '',
+      confidence: hit.confidence != null ? hit.confidence : 85,
+      timestamp: hit.timestamp ? new Date(hit.timestamp).getTime() : Date.now(),
       pinned: false,
       resolved: false
     };
-
-    state.concepts.push(concept);
-    addConceptCard(concept);
-    updateConceptSelectOptions();
-    updateConceptBadge();
-    updateSessionInfo();
   }
 
   /**
-   * Add concept card to timeline
+   * Build a single concept card DOM element (no state update)
    * @param {Object} concept - Concept object
+   * @returns {HTMLElement} Card element
    */
-  function addConceptCard(concept) {
-    hideTimelineEmpty();
-
+  function buildConceptCardElement(concept) {
     const card = document.createElement('div');
     card.className = 'concept-card pulse-in';
     card.dataset.conceptId = concept.id;
@@ -563,13 +561,102 @@
       </div>
     `;
 
-    elements.timelineFeed.appendChild(card);
-
-    // Add event listeners to action buttons
     const actionButtons = card.querySelectorAll('.concept-action-btn');
     actionButtons.forEach(btn => {
       btn.addEventListener('click', () => handleConceptAction(concept.id, btn.dataset.action));
     });
+    return card;
+  }
+
+  /**
+   * Replace the entire timeline with a list of concepts (from API)
+   * @param {Array<Object>} concepts - Array of concept objects
+   */
+  function replaceTimelineWithConcepts(concepts) {
+    state.concepts = concepts;
+    elements.timelineFeed.innerHTML = '';
+    if (concepts.length === 0) {
+      showTimelineEmpty();
+    } else {
+      hideTimelineEmpty();
+      concepts.forEach(function (c) {
+        elements.timelineFeed.appendChild(buildConceptCardElement(c));
+      });
+    }
+    updateConceptBadge();
+    updateConceptSelectOptions();
+    updateSessionInfo();
+  }
+
+  /**
+   * Fetch concept cards from backend and only add new ones (keep existing intact)
+   */
+  function fetchConceptCards() {
+    fetch(API_CONCEPT_CARDS)
+      .then(function (r) {
+        if (!r.ok) throw new Error('concept-cards ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        const hits = data.hits || [];
+        const existingIds = {};
+        state.concepts.forEach(function (c) { existingIds[c.id] = true; });
+        let added = 0;
+        hits.forEach(function (hit) {
+          const concept = mapHitToConcept(hit);
+          if (existingIds[concept.id]) return;
+          existingIds[concept.id] = true;
+          state.concepts.push(concept);
+          hideTimelineEmpty();
+          elements.timelineFeed.appendChild(buildConceptCardElement(concept));
+          added++;
+        });
+        if (added > 0) {
+          updateConceptBadge();
+          updateConceptSelectOptions();
+          updateSessionInfo();
+          logger.debug('Concept cards: added', added, 'new');
+        }
+      })
+      .catch(function (err) {
+        logger.error('Failed to fetch concept cards:', err);
+      });
+  }
+
+  /**
+   * Handle new concept from backend (e.g. WebSocket)
+   * @param {Object} data - Concept data
+   */
+  function handleNewConcept(data) {
+    const concept = {
+      id: data.id || `concept-${Date.now()}`,
+      title: data.title || 'New Concept',
+      description: data.description || '',
+      confidence: data.confidence != null ? data.confidence : Math.floor(Math.random() * 30) + 70,
+      timestamp: data.timestamp || Date.now(),
+      pinned: false,
+      resolved: false
+    };
+
+    state.concepts.push(concept);
+    hideTimelineEmpty();
+    elements.timelineFeed.appendChild(buildConceptCardElement(concept));
+    updateConceptSelectOptions();
+    updateConceptBadge();
+    updateSessionInfo();
+  }
+
+  /**
+   * Add concept card to timeline (single card, e.g. from WebSocket)
+   * @param {Object} concept - Concept object
+   */
+  function addConceptCard(concept) {
+    state.concepts.push(concept);
+    hideTimelineEmpty();
+    elements.timelineFeed.appendChild(buildConceptCardElement(concept));
+    updateConceptSelectOptions();
+    updateConceptBadge();
+    updateSessionInfo();
   }
 
   /**
@@ -626,6 +713,15 @@
   function hideTimelineEmpty() {
     if (elements.timelineEmpty) {
       elements.timelineEmpty.style.display = 'none';
+    }
+  }
+
+  /**
+   * Show timeline empty state
+   */
+  function showTimelineEmpty() {
+    if (elements.timelineEmpty) {
+      elements.timelineEmpty.style.display = '';
     }
   }
 
@@ -898,9 +994,9 @@
     // Initialize event listeners
     initializeEventListeners();
 
-    // Start real-time simulation for demo
-    // Comment this out when connecting to real backend
-    startRealtimeSimulation();
+    // Load concept cards from ta-da-concept-cards (backend API) on first load and every 5s
+    fetchConceptCards();
+    setInterval(fetchConceptCards, CONCEPT_CARDS_POLL_INTERVAL_MS);
 
     logger.info('Dashboard initialized successfully');
   }
