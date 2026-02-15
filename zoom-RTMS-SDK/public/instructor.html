@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instructor Dashboard — Live TA</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    #generateQuizBtn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    #generateQuizBtn:active {
+      transform: translateY(0);
+    }
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+      transform: rotate(90deg);
+    }
+    #publishQuizBtn:hover {
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      transform: translateY(-2px);
+    }
+    #downloadQuizBtn:hover {
+      background: rgba(102, 126, 234, 0.2) !important;
+      transform: translateY(-2px);
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .update-flash {
+      animation: flash 0.9s ease;
+    }
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; transform: scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="animated-background">
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    <div class="gradient-orb orb-3"></div>
+  </div>
+
+  <div class="dashboard-container">
+    <header class="glass-panel" style="display:flex;justify-content:space-between;align-items:center;padding:20px 28px;margin-bottom:24px;backdrop-filter:blur(20px);border-radius:24px;">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="width:48px;height:48px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;">
+          👨‍🏫
+        </div>
+        <div>
+          <h2 style="margin:0;font-size:28px;font-weight:700;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Instructor Dashboard</h2>
+          <p style="margin:0;font-size:14px;color:var(--muted);font-weight:400;">Live classroom monitoring & support</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div style="padding:8px 16px;background:rgba(102, 126, 234, 0.15);border-radius:12px;font-weight:600;font-size:14px;color:#667eea;">
+          🔴 Live
+        </div>
+        <button id="generateQuizBtn" class="action-card" style="padding:10px 20px;font-weight:600;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;box-shadow:0 4px 15px rgba(102, 126, 234, 0.4);">
+          ✨ Generate Quiz
+        </button>
+        <button id="clearAllBtn" class="action-card" style="padding:10px 20px;font-weight:600;">
+          🗑️ Clear All
+        </button>
+      </div>
+    </header>
+
+    <main style="display:grid;grid-template-columns:1fr 380px;gap:24px;">
+      <section>
+        <div class="glass-panel" style="padding:24px;border-radius:24px;backdrop-filter:blur(20px);">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div style="width:40px;height:40px;background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">
+              🆘
+            </div>
+            <div>
+              <h3 style="margin:0;font-size:20px;font-weight:700;">Live Help Requests</h3>
+              <p style="margin:0;font-size:13px;color:var(--muted);">Real-time student assistance queue</p>
+            </div>
+          </div>
+          <div id="requestsList" class="timeline-feed" style="min-height:400px;">
+            <div class="timeline-empty">
+              <div class="empty-animation">
+                <svg class="empty-icon" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="30" class="circle-orbit"/>
+                  <circle cx="50" cy="50" r="20" class="circle-core"/>
+                </svg>
+              </div>
+              <h4 style="font-size:18px;font-weight:600;margin:16px 0 8px 0;">No active requests</h4>
+              <p style="color:var(--muted);font-size:14px;margin:0;">Waiting for students to request help...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="glass-panel" style="padding:24px;border-radius:24px;backdrop-filter:blur(20px);margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div style="width:40px;height:40px;background:linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">
+              📊
+            </div>
+            <div>
+              <h3 style="margin:0;font-size:18px;font-weight:700;">Class Stats</h3>
+              <p style="margin:0;font-size:12px;color:var(--muted);">Live analytics</p>
+            </div>
+          </div>
+
+          <div style="background:rgba(102, 126, 234, 0.1);border-radius:16px;padding:16px;margin-bottom:20px;border:1px solid rgba(102, 126, 234, 0.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:600;font-size:14px;color:var(--muted);">Active Requests</span>
+              <span id="activeCount" style="font-size:32px;font-weight:800;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">0</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <h4 style="font-size:14px;font-weight:700;margin:0 0 12px 0;color:var(--muted);">Student Feelings</h4>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(239, 68, 68, 0.1);border-radius:12px;border:1px solid rgba(239, 68, 68, 0.2);">
+                <span style="font-size:14px;font-weight:600;">😵‍💫 totally lost</span>
+                <span id="lostCount" style="font-size:18px;font-weight:800;color:#ef4444;">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(251, 191, 36, 0.1);border-radius:12px;border:1px solid rgba(251, 191, 36, 0.2);">
+                <span style="font-size:14px;font-weight:600;">🤔 kinda vibing</span>
+                <span id="kindaCount" style="font-size:18px;font-weight:800;color:#fbbf24;">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(34, 197, 94, 0.1);border-radius:12px;border:1px solid rgba(34, 197, 94, 0.2);">
+                <span style="font-size:14px;font-weight:600;">✨ totally got it</span>
+                <span id="gotitCount" style="font-size:18px;font-weight:800;color:#22c55e;">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 style="font-size:14px;font-weight:700;margin:0 0 12px 0;color:var(--muted);">Recent Activity</h4>
+            <div id="recentTimeline" style="max-height:200px;overflow:auto;background:rgba(0,0,0,0.2);border-radius:12px;padding:8px;font-size:12px;"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <audio id="alertSound" src="/js/alert.mp3" preload="auto"></audio>
+  </div>
+
+  <!-- Quiz Generation Modal -->
+  <div class="modal-overlay" id="quizModal" style="display:none;">
+    <div class="modal-content glass-panel" style="max-width:800px;width:90%;max-height:85vh;overflow:auto;">
+      <button class="modal-close" id="closeQuizModal" aria-label="Close" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:28px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;">&times;</button>
+
+      <div style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div style="width:48px;height:48px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;">
+            📝
+          </div>
+          <div>
+            <h2 style="margin:0;font-size:24px;font-weight:700;">AI-Generated Quiz</h2>
+            <p style="margin:0;font-size:14px;color:var(--muted);">Based on today's lecture content</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="quizLoadingState" style="display:none;text-align:center;padding:40px;">
+        <div class="empty-animation">
+          <svg class="empty-icon" viewBox="0 0 100 100" style="width:80px;height:80px;">
+            <circle cx="50" cy="50" r="30" class="circle-orbit"/>
+            <circle cx="50" cy="50" r="20" class="circle-core"/>
+          </svg>
+        </div>
+        <p style="margin-top:20px;font-size:16px;color:var(--muted);">Generating quiz with AI...</p>
+      </div>
+
+      <div id="quizContent" style="display:none;">
+        <div id="quizText" style="line-height:1.8;font-size:15px;"></div>
+
+        <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:12px;justify-content:flex-end;">
+          <button id="publishQuizBtn" style="padding:12px 24px;border-radius:12px;border:none;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.3s ease;box-shadow:0 4px 15px rgba(102, 126, 234, 0.3);">
+            📢 Publish to Students
+          </button>
+          <button id="downloadQuizBtn" style="padding:12px 24px;border-radius:12px;border:2px solid #667eea;background:rgba(102, 126, 234, 0.1);color:#667eea;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.3s ease;">
+            💾 Download as Text
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/instructor.js"></script>
+</body>
+</html>

@@ -189,6 +189,26 @@ class WebSocketHandler {
         logger.error('WebSocket error:', error);
         this.wsConnections.delete(ws);
       });
+
+      // Handle incoming messages from clients (e.g., help requests from students)
+      ws.on('message', (data: WebSocket.RawData) => {
+        try {
+          const msg = JSON.parse(String(data));
+          if (msg && msg.type === 'help_request') {
+            logger.info('Received help_request from client:', msg.studentName || 'unknown');
+            // Broadcast help request to all connected clients (instructor UIs)
+            this.broadcastToClients({
+              type: 'help_request',
+              studentName: msg.studentName || 'Student',
+              feeling: msg.feeling || 'unknown',
+              timestamp: msg.timestamp || Date.now(),
+              message: msg.message || ''
+            });
+          }
+        } catch (err) {
+          logger.debug('Failed to parse client message:', err);
+        }
+      });
     });
   }
 

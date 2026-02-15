@@ -399,6 +399,39 @@ body {
   animation: bounce-wiggle 0.6s ease;
 }
 
+/* Flash animation for updated counts */
+.update-flash {
+  animation: pulseFlash 900ms ease;
+}
+
+@keyframes pulseFlash {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0,0,0,0);
+    color: var(--text-primary);
+  }
+  30% {
+    transform: scale(1.06);
+    color: var(--neon-cyan);
+    text-shadow: 0 6px 18px rgba(0,245,255,0.12);
+  }
+  60% {
+    transform: scale(1.02);
+    color: var(--neon-magenta);
+  }
+  100% {
+    transform: scale(1);
+    color: var(--text-primary);
+  }
+}
+
+/* Acknowledged button visual state */
+.action-card.acknowledged,
+.cta-help.acknowledged {
+  border-color: var(--neon-green);
+  box-shadow: 0 6px 18px rgba(6,255,165,0.12);
+}
+
 .feeling-lost.active .feeling-ripple {
   opacity: 1;
   background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3), transparent);

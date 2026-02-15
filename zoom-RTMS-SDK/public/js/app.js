@@ -230,6 +230,31 @@
     // Update understanding score
     updateUnderstandingScore(feeling);
 
+    // Broadcast feeling update to instructor UI (via WebSocket and BroadcastChannel)
+    try {
+      const payload = {
+        type: 'feeling_update',
+        studentName: localStorage.getItem('ta_student_name') || `Student-${Math.floor(Math.random() * 900) + 100}`,
+        feeling,
+        score: { lost: 30, kinda: 65, gotit: 95 }[feeling] || null,
+        timestamp: Date.now()
+      };
+
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify(payload));
+      }
+
+      try {
+        const bc = new BroadcastChannel('ta-help-channel');
+        bc.postMessage(payload);
+        bc.close();
+      } catch (e) {
+        logger.debug('BroadcastChannel not available for feeling_update:', e);
+      }
+    } catch (err) {
+      logger.debug('Failed to broadcast feeling_update:', err);
+    }
+
     logger.info('Feeling updated:', feeling);
   }
 
@@ -473,6 +498,40 @@
     // if (state.ws && state.ws.readyState === WebSocket.OPEN) {
     //   state.ws.send(JSON.stringify({ type: 'urgent_help' }));
     // }
+
+    // Send help request to backend via WebSocket (preferred)
+    try {
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({
+          type: 'help_request',
+          studentName: localStorage.getItem('ta_student_name') || 'Student',
+          feeling: state.feeling || 'unknown',
+          timestamp: Date.now(),
+          message: ''
+        }));
+      }
+    } catch (err) {
+      logger.debug('WS send failed:', err);
+    }
+
+    // Also broadcast help request to any instructor dashboard tabs (demo/hackathon use)
+    try {
+      if (!localStorage.getItem('ta_student_name')) {
+        // seed a demo student name for this tab
+        localStorage.setItem('ta_student_name', `Student-${Math.floor(Math.random() * 900) + 100}`);
+      }
+      const bc = new BroadcastChannel('ta-help-channel');
+      bc.postMessage({
+        type: 'help_request',
+        studentName: localStorage.getItem('ta_student_name'),
+        feeling: state.feeling || 'unknown',
+        timestamp: Date.now(),
+        message: ''
+      });
+      bc.close();
+    } catch (err) {
+      logger.debug('BroadcastChannel not available:', err);
+    }
 
     // Auto-remove urgent state after 5 seconds
     setTimeout(() => {
@@ -898,9 +957,31 @@
     // Initialize event listeners
     initializeEventListeners();
 
+    // Ensure each student tab has a persistent demo name for instructor tracking
+    try {
+      if (!localStorage.getItem('ta_student_name')) {
+        localStorage.setItem('ta_student_name', `Student-${Math.floor(Math.random() * 900) + 100}`);
+      }
+    } catch (e) {
+      logger.debug('localStorage unavailable for ta_student_name:', e);
+    }
+
     // Start real-time simulation for demo
     // Comment this out when connecting to real backend
     startRealtimeSimulation();
+
+    // Listen for instructor acknowledgements via BroadcastChannel (demo)
+    try {
+      const bc = new BroadcastChannel('ta-help-channel');
+      bc.onmessage = (ev) => {
+        const msg = ev.data || {};
+        if (msg.type === 'help_ack') {
+          handleHelpAck(msg);
+        }
+      };
+    } catch (e) {
+      logger.debug('BroadcastChannel not available for ACKs:', e);
+    }
 
     logger.info('Dashboard initialized successfully');
   }
@@ -910,6 +991,52 @@
     document.addEventListener('DOMContentLoaded', initialize);
   } else {
     initialize();
+  }
+
+  /**
+   * Handle incoming help acknowledgement targeted at this student
+   */
+  function handleHelpAck(msg) {
+    try {
+      const myName = localStorage.getItem('ta_student_name');
+      if (!myName) return;
+      if (msg.studentName && msg.studentName !== myName) return;
+
+      // Visual feedback: small banner and change needHelp button state briefly
+      const banner = document.createElement('div');
+      banner.className = 'ack-banner';
+      banner.style.position = 'fixed';
+      banner.style.bottom = '18px';
+      banner.style.left = '50%';
+      banner.style.transform = 'translateX(-50%)';
+      banner.style.background = 'linear-gradient(90deg,#0f172a,#06202b)';
+      banner.style.color = '#fff';
+      banner.style.padding = '10px 14px';
+      banner.style.borderRadius = '10px';
+      banner.style.boxShadow = '0 6px 18px rgba(0,0,0,0.4)';
+      banner.style.zIndex = '2000';
+      banner.textContent = msg.ackBy ? `${msg.ackBy} acknowledged your help request` : 'Instructor acknowledged your help request';
+      document.body.appendChild(banner);
+
+      // Temporarily style the Need Help button
+      if (elements.needHelpBtn) {
+        elements.needHelpBtn.classList.add('acknowledged');
+        const prevLabel = elements.needHelpBtn.querySelector('.action-content h4');
+        if (prevLabel) prevLabel.dataset._orig = prevLabel.textContent;
+        if (prevLabel) prevLabel.textContent = 'Acknowledged';
+      }
+
+      setTimeout(() => {
+        banner.remove();
+        if (elements.needHelpBtn) {
+          elements.needHelpBtn.classList.remove('acknowledged');
+          const prevLabel = elements.needHelpBtn.querySelector('.action-content h4');
+          if (prevLabel && prevLabel.dataset._orig) prevLabel.textContent = prevLabel.dataset._orig;
+        }
+      }, 4500);
+    } catch (err) {
+      logger.debug('handleHelpAck error:', err);
+    }
   }
 
   // ==================== PUBLIC API ====================
