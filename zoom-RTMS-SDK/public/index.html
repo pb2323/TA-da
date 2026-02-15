@@ -19,112 +19,164 @@
 
     <!-- Main Dashboard -->
     <div class="dashboard-container">
-        <!-- Left Sidebar -->
-        <aside class="left-sidebar glass-panel">
-            <!-- Feelings Section -->
-            <section class="feelings-section">
-                <h3 class="section-title">How are you feeling?</h3>
-                <div class="feeling-buttons">
-                    <button class="feeling-btn feeling-lost" data-feeling="lost" aria-label="I'm lost">
-                        <span class="feeling-emoji">😵</span>
-                        <span class="feeling-label">Lost</span>
-                        <div class="feeling-glow"></div>
-                    </button>
-                    <button class="feeling-btn feeling-kinda" data-feeling="kinda" aria-label="Kinda getting it">
-                        <span class="feeling-emoji">🤔</span>
-                        <span class="feeling-label">Kinda</span>
-                        <div class="feeling-glow"></div>
-                    </button>
-                    <button class="feeling-btn feeling-gotit" data-feeling="gotit" aria-label="Got it!">
-                        <span class="feeling-emoji">✨</span>
-                        <span class="feeling-label">Got it!</span>
-                        <div class="feeling-glow"></div>
-                    </button>
-                </div>
-            </section>
+        <!-- Tab Navigation -->
+        <nav class="tab-navigation glass-panel">
+            <button class="tab-btn active" data-tab="feelings">
+                <span class="tab-icon">💭</span>
+                <span class="tab-label">My Status</span>
+            </button>
+            <button class="tab-btn" data-tab="timeline">
+                <span class="tab-icon">📚</span>
+                <span class="tab-label">Learning Timeline</span>
+                <span class="tab-badge" id="conceptBadge">0</span>
+            </button>
+            <button class="tab-btn" data-tab="avatar">
+                <span class="tab-icon">🤖</span>
+                <span class="tab-label">TA Avatar</span>
+            </button>
+        </nav>
 
-            <!-- CTA Buttons -->
-            <div class="sidebar-actions">
-                <button class="cta-btn cta-question" id="askQuestionBtn">
-                    <span class="cta-icon">💬</span>
-                    <span class="cta-text">Ask Question</span>
-                </button>
-                <button class="cta-btn cta-help" id="needHelpBtn">
-                    <span class="cta-icon">🆘</span>
-                    <span class="cta-text">Need Help</span>
-                    <div class="urgent-pulse"></div>
-                </button>
-            </div>
-        </aside>
+        <!-- Tab Content -->
+        <main class="tab-content-container">
+            <!-- Tab 1: My Status (Feelings & Actions) -->
+            <div class="tab-panel active" id="feelingsTab">
+                <div class="tab-panel-inner">
+                    <h2 class="tab-title">what's the vibe? ✨</h2>
+                    <p class="tab-subtitle">tap how you're feeling about this lecture rn</p>
 
-        <!-- Center Area -->
-        <main class="center-area">
-            <!-- Timeline -->
-            <div class="timeline-header">
-                <h1 class="timeline-title">Learning Moments Timeline</h1>
-                <p class="timeline-subtitle">Concepts are generated as your instructor teaches</p>
-            </div>
-
-            <div class="timeline-container glass-panel" id="timelineContainer">
-                <div class="timeline-empty" id="timelineEmpty">
-                    <div class="empty-animation">
-                        <svg class="empty-icon" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="30" class="circle-orbit"/>
-                            <circle cx="50" cy="50" r="20" class="circle-core"/>
-                        </svg>
+                    <div class="feeling-buttons-grid">
+                        <button class="feeling-btn feeling-lost" data-feeling="lost" aria-label="I'm lost">
+                            <div class="feeling-content">
+                                <span class="feeling-emoji">😵‍💫</span>
+                                <div class="feeling-text">
+                                    <span class="feeling-label">totally lost rn</span>
+                                    <span class="feeling-description">help i'm drowning</span>
+                                </div>
+                            </div>
+                            <div class="feeling-ripple"></div>
+                        </button>
+                        <button class="feeling-btn feeling-kinda" data-feeling="kinda" aria-label="Kinda getting it">
+                            <div class="feeling-content">
+                                <span class="feeling-emoji">🤔</span>
+                                <div class="feeling-text">
+                                    <span class="feeling-label">kinda vibing</span>
+                                    <span class="feeling-description">getting there ngl</span>
+                                </div>
+                            </div>
+                            <div class="feeling-ripple"></div>
+                        </button>
+                        <button class="feeling-btn feeling-gotit" data-feeling="gotit" aria-label="Got it!">
+                            <div class="feeling-content">
+                                <span class="feeling-emoji">✨</span>
+                                <div class="feeling-text">
+                                    <span class="feeling-label">totally got it</span>
+                                    <span class="feeling-description">chef's kiss fr fr</span>
+                                </div>
+                            </div>
+                            <div class="feeling-ripple"></div>
+                        </button>
                     </div>
-                    <h3 class="empty-title">Waiting for class to start...</h3>
-                    <p class="empty-text">Concept cards will appear here in real-time</p>
+
+                    <div class="actions-section">
+                        <h3 class="section-title">Quick Actions</h3>
+                        <div class="action-buttons">
+                            <button class="action-card cta-question" id="askQuestionBtn">
+                                <div class="action-icon">💬</div>
+                                <div class="action-content">
+                                    <h4>Ask Question</h4>
+                                    <p>Get clarification on concepts</p>
+                                </div>
+                            </button>
+                            <button class="action-card cta-help" id="needHelpBtn">
+                                <div class="action-icon">🆘</div>
+                                <div class="action-content">
+                                    <h4>Need Help</h4>
+                                    <p>Alert instructor immediately</p>
+                                </div>
+                                <div class="urgent-pulse"></div>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="timeline-feed" id="timelineFeed"></div>
+            </div>
+
+            <!-- Tab 2: Learning Timeline -->
+            <div class="tab-panel" id="timelineTab">
+                <div class="tab-panel-inner timeline-view">
+                    <div class="timeline-header-inline">
+                        <div>
+                            <h2 class="tab-title">Learning Moments Timeline</h2>
+                            <p class="tab-subtitle">Concepts are generated as your instructor teaches</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-container-full" id="timelineContainer">
+                        <div class="timeline-empty" id="timelineEmpty">
+                            <div class="empty-animation">
+                                <svg class="empty-icon" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="30" class="circle-orbit"/>
+                                    <circle cx="50" cy="50" r="20" class="circle-core"/>
+                                </svg>
+                            </div>
+                            <h3 class="empty-title">Waiting for class to start...</h3>
+                            <p class="empty-text">Concept cards will appear here in real-time</p>
+                        </div>
+                        <div class="timeline-feed" id="timelineFeed"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: TA Avatar -->
+            <div class="tab-panel" id="avatarTab">
+                <div class="tab-panel-inner avatar-view">
+                    <h2 class="tab-title">TA Avatar Assistant</h2>
+                    <p class="tab-subtitle">Get personalized explanations and help</p>
+
+                    <div class="avatar-main-section">
+                        <div class="avatar-circle-large">
+                            <div class="avatar-glow"></div>
+                            <div class="avatar-inner">
+                                <svg class="avatar-icon" viewBox="0 0 100 100">
+                                    <defs>
+                                        <linearGradient id="avatarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#ff006e;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#8338ec;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="50" cy="35" r="15" fill="url(#avatarGradient)"/>
+                                    <path d="M 25 60 Q 50 75, 75 60 L 75 80 Q 50 90, 25 80 Z" fill="url(#avatarGradient)"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="avatar-status-large" id="avatarStatus">Ready to help!</div>
+
+                        <button class="avatar-action-btn-large" id="avatarExplainBtn">
+                            <span class="btn-icon">🎙</span>
+                            <span class="btn-text">Ask Avatar to Explain</span>
+                            <div class="btn-shimmer"></div>
+                        </button>
+                    </div>
+
+                    <div class="suggestions-grid">
+                        <h3 class="section-title">Quick Suggestions</h3>
+                        <div class="suggestion-cards">
+                            <div class="suggestion-card">
+                                <span class="suggestion-icon">💡</span>
+                                <span class="suggestion-text">Explain last concept</span>
+                            </div>
+                            <div class="suggestion-card">
+                                <span class="suggestion-icon">🔄</span>
+                                <span class="suggestion-text">Review key points</span>
+                            </div>
+                            <div class="suggestion-card">
+                                <span class="suggestion-icon">🎯</span>
+                                <span class="suggestion-text">Quick quiz me</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
-
-        <!-- Right Panel -->
-        <aside class="right-panel glass-panel">
-            <!-- AI Avatar -->
-            <div class="avatar-section">
-                <div class="avatar-circle">
-                    <div class="avatar-glow"></div>
-                    <div class="avatar-inner">
-                        <svg class="avatar-icon" viewBox="0 0 100 100">
-                            <defs>
-                                <linearGradient id="avatarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style="stop-color:#ff006e;stop-opacity:1" />
-                                    <stop offset="100%" style="stop-color:#8338ec;stop-opacity:1" />
-                                </linearGradient>
-                            </defs>
-                            <circle cx="50" cy="35" r="15" fill="url(#avatarGradient)"/>
-                            <path d="M 25 60 Q 50 75, 75 60 L 75 80 Q 50 90, 25 80 Z" fill="url(#avatarGradient)"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="avatar-status" id="avatarStatus">Ready to help!</div>
-            </div>
-
-            <!-- Avatar Action Button -->
-            <button class="avatar-action-btn" id="avatarExplainBtn">
-                <span class="btn-icon">🎙</span>
-                <span class="btn-text">Ask Avatar to Explain</span>
-                <div class="btn-shimmer"></div>
-            </button>
-
-            <!-- Suggestion Bubbles -->
-            <div class="suggestions-container" id="suggestionsContainer">
-                <div class="suggestion-bubble">
-                    <span class="bubble-icon">💡</span>
-                    <span class="bubble-text">Explain last concept</span>
-                </div>
-                <div class="suggestion-bubble">
-                    <span class="bubble-icon">🔄</span>
-                    <span class="bubble-text">Review key points</span>
-                </div>
-                <div class="suggestion-bubble">
-                    <span class="bubble-icon">🎯</span>
-                    <span class="bubble-text">Quick quiz me</span>
-                </div>
-            </div>
-        </aside>
     </div>
 
     <!-- Ask Question Modal -->

@@ -11,13 +11,25 @@
     feeling: null,
     understandingHistory: [],
     isHelpUrgent: false,
-    sessionStartTime: null,
+    sessionStartTime: Date.now(),
+    questionsAsked: 0,
     ws: null,
-    reconnectTimer: null
+    reconnectTimer: null,
+    sessionTimerInterval: null
   };
 
   // ==================== DOM ELEMENTS ====================
   const elements = {
+    // Tabs
+    tabButtons: document.querySelectorAll('.tab-btn'),
+    tabPanels: document.querySelectorAll('.tab-panel'),
+    conceptBadge: document.getElementById('conceptBadge'),
+
+    // Session Info
+    sessionTime: document.getElementById('sessionTime'),
+    conceptsCount: document.getElementById('conceptsCount'),
+    questionsCount: document.getElementById('questionsCount'),
+
     // Feelings
     feelingButtons: document.querySelectorAll('.feeling-btn'),
 
@@ -117,6 +129,82 @@
     }
   }
 
+  // ==================== TAB SWITCHING ====================
+  /**
+   * Switch between tabs
+   * @param {string} tabName - Tab to switch to (feelings, timeline, avatar)
+   */
+  function switchTab(tabName) {
+    // Update tab buttons
+    elements.tabButtons.forEach(btn => {
+      if (btn.dataset.tab === tabName) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    // Update tab panels
+    elements.tabPanels.forEach(panel => {
+      if (panel.id === `${tabName}Tab`) {
+        panel.classList.add('active');
+      } else {
+        panel.classList.remove('active');
+      }
+    });
+
+    logger.info('Switched to tab:', tabName);
+  }
+
+  /**
+   * Update concept badge count
+   */
+  function updateConceptBadge() {
+    const count = state.concepts.length;
+    elements.conceptBadge.textContent = count;
+  }
+
+  // ==================== SESSION INFO TRACKING ====================
+  /**
+   * Start session timer
+   */
+  function startSessionTimer() {
+    // Update immediately
+    updateSessionTime();
+
+    // Update every second
+    state.sessionTimerInterval = setInterval(updateSessionTime, 1000);
+  }
+
+  /**
+   * Update session time display
+   */
+  function updateSessionTime() {
+    const elapsed = Date.now() - state.sessionStartTime;
+    const minutes = Math.floor(elapsed / 60000);
+    const seconds = Math.floor((elapsed % 60000) / 1000);
+
+    const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    if (elements.sessionTime) {
+      elements.sessionTime.textContent = timeString;
+    }
+  }
+
+  /**
+   * Update session info displays
+   */
+  function updateSessionInfo() {
+    // Update concepts count
+    if (elements.conceptsCount) {
+      elements.conceptsCount.textContent = state.concepts.length;
+    }
+
+    // Update questions count
+    if (elements.questionsCount) {
+      elements.questionsCount.textContent = state.questionsAsked;
+    }
+  }
+
   // ==================== FEELINGS TRACKING ====================
   /**
    * Handle feeling button clicks
@@ -196,6 +284,10 @@
     // Add question to timeline
     addStudentQuestionCard(question);
 
+    // Increment questions counter
+    state.questionsAsked++;
+    updateSessionInfo();
+
     // Close modal
     closeQuestionModal();
 
@@ -265,6 +357,8 @@
     state.concepts.push(concept);
     addConceptCard(concept);
     updateConceptSelectOptions();
+    updateConceptBadge();
+    updateSessionInfo();
   }
 
   /**
@@ -574,6 +668,16 @@
    * Initialize all event listeners
    */
   function initializeEventListeners() {
+    // Tab buttons
+    elements.tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        if (tab) {
+          switchTab(tab);
+        }
+      });
+    });
+
     // Feeling buttons
     elements.feelingButtons.forEach(btn => {
       btn.addEventListener('click', handleFeelingClick);
@@ -637,6 +741,12 @@
    */
   function initialize() {
     logger.info('Initializing Live TA Dashboard');
+
+    // Start session timer
+    startSessionTimer();
+
+    // Initialize session info
+    updateSessionInfo();
 
     // Connect to WebSocket
     connectWebSocket();
