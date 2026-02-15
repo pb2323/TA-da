@@ -22,6 +22,7 @@ const CLASSOPS_AGENT_URL = process.env.CLASSOPS_AGENT_URL || "http://localhost:5
 
 const INDEX_SESSIONS = "ta-da-sessions";
 const INDEX_TA_DA_LATEST = "ta-da-latest";
+const INDEX_CONCEPT_CARDS = "ta-da-concept-cards";
 
 function getElastic() {
   if (!ELASTIC_API_KEY) throw new Error("ELASTIC_API_KEY required for CONCEPT_SET");
@@ -70,6 +71,47 @@ app.post("/search/semantic", async (req, res) => {
   } catch (e) {
     console.error("search/semantic error", e);
     return res.status(500).json({ error: e.message || "search failed" });
+  }
+});
+
+/**
+ * Fetch all concept cards from ta-da-concept-cards index.
+ *
+ * GET /concept-cards
+ * Query: meeting_id (optional) - filter by meeting_id
+ *        size (optional) - max hits (default 100, max 1000)
+ * Returns: { hits: [ { _id, _score, meeting_id, concept_id, title, short_explain, example, timestamp }, ... ] }
+ */
+app.get("/concept-cards", async (req, res) => {
+  try {
+    const es = getElastic();
+    const meeting_id = req.query.meeting_id;
+    const size = Math.min(Math.max(1, parseInt(req.query.size, 10) || 100), 1000);
+
+    const query = meeting_id
+      ? { bool: { filter: [{ term: { meeting_id } }] } }
+      : { match_all: {} };
+
+    const response = await es.search({
+      index: INDEX_CONCEPT_CARDS,
+      query,
+      size,
+      sort: [{ timestamp: { unmapped_type: "date", order: "asc" } }],
+    });
+
+    const hits = (response.hits?.hits || []).map((h) => ({
+      _id: h._id,
+      _score: h._score,
+      ...h._source,
+    }));
+
+    return res.json({
+      total: response.hits?.total?.value ?? hits.length,
+      hits,
+    });
+  } catch (e) {
+    console.error("concept-cards error", e);
+    return res.status(500).json({ error: e.message || "concept-cards fetch failed" });
   }
 });
 

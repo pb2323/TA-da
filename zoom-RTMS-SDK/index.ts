@@ -81,6 +81,26 @@ app.post('/api/agent/converse', async (req: Request, res: Response) => {
   }
 });
 
+// Proxy to TA-DA backend concept cards (ta-da-concept-cards index)
+app.get('/api/concept-cards', async (req: Request, res: Response) => {
+  try {
+    const meetingId = req.query.meeting_id as string | undefined;
+    const size = req.query.size as string | undefined;
+    const params = new URLSearchParams();
+    if (meetingId) params.set('meeting_id', meetingId);
+    if (size) params.set('size', size);
+    const query = params.toString();
+    const url = `${TA_DA_BACKEND_URL}/concept-cards${query ? `?${query}` : ''}`;
+    const r = await fetch(url);
+    const data = await r.json().catch(() => ({}));
+    res.status(r.status).json(data);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'concept-cards proxy failed';
+    logger.error('Concept cards proxy error:', msg);
+    res.status(502).json({ error: msg });
+  }
+});
+
 // Start the HTTP server
 server.listen(PORT, () => {
   logger.success(`🚀 Server running on port ${PORT}`);
