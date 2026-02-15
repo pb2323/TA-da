@@ -4,8 +4,7 @@
  */
 
 import { config } from "dotenv";
-import { join } from "path";
-config({ path: join(process.cwd(), "..", ".env.local") });
+config();
 
 import express from "express";
 import { Client } from "@elastic/elasticsearch";
