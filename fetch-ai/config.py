@@ -28,6 +28,15 @@ class BackendConfig(BaseModel):
     )
 
 
+class RedisConfig(BaseModel):
+    url: str = Field(
+        default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379")
+    )
+    db: int = Field(
+        default_factory=lambda: int(os.getenv("REDIS_DB", "0"))
+    )
+
+
 class LLMConfig(BaseModel):
     # XAI_API_KEY for xAI/Grok; OPENAI_API_KEY for OpenAI (XAI takes precedence)
     api_key: str = Field(
@@ -50,11 +59,15 @@ class AgentConfig(BaseModel):
     poll_interval_sec: float = Field(
         default_factory=lambda: float(os.getenv("CONCEPT_CARD_AGENT_POLL_INTERVAL", "45"))
     )
+    auto_run_interval_sec: float = Field(
+        default_factory=lambda: float(os.getenv("CONCEPT_CARD_AUTO_RUN_INTERVAL", "60"))
+    )
 
 
 class ConceptCardAgentConfig(BaseModel):
     elastic: ElasticConfig = Field(default_factory=ElasticConfig)
     backend: BackendConfig = Field(default_factory=BackendConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
 

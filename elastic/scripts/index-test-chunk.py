@@ -70,18 +70,18 @@ TEST_CHUNKS = [
     #     "start_time": 32.0,
     #     "end_time": 48.0,
     # },
-    {
-        "meeting_id": "test-meeting-001",
-        "chunk_index": 3,
-        "text": (
-            "Indexing speeds up queries. A primary index is built on the table's primary key; data is stored in key order. "
-            "Secondary indexes are on non-key attributes. B-trees are self-balancing trees used for indexes; keys and data can live in internal and leaf nodes. "
-            "B-plus trees store data only in leaf nodes, with leaves linked for efficient range queries. "
-            "Most databases use B-plus trees for indexing."
-        ),
-        "start_time": 48.0,
-        "end_time": 65.0,
-    },
+    # {
+    #     "meeting_id": "test-meeting-001",
+    #     "chunk_index": 3,
+    #     "text": (
+    #         "Indexing speeds up queries. A primary index is built on the table's primary key; data is stored in key order. "
+    #         "Secondary indexes are on non-key attributes. B-trees are self-balancing trees used for indexes; keys and data can live in internal and leaf nodes. "
+    #         "B-plus trees store data only in leaf nodes, with leaves linked for efficient range queries. "
+    #         "Most databases use B-plus trees for indexing."
+    #     ),
+    #     "start_time": 48.0,
+    #     "end_time": 65.0,
+    # },
     # {
     #     "meeting_id": "test-meeting-001",
     #     "chunk_index": 4,
@@ -94,18 +94,18 @@ TEST_CHUNKS = [
     #     "start_time": 65.0,
     #     "end_time": 82.0,
     # },
-    # {
-    #     "meeting_id": "test-meeting-001",
-    #     "chunk_index": 5,
-    #     "text": (
-    #         "Hash indexes use a hash function to map keys to buckets. Lookup is O(1) on average for equality checks. "
-    #         "Hash indexes are excellent for point lookups but cannot support range queries or ordering. "
-    #         "Collision handling: chaining links items in the same bucket; open addressing finds another slot. "
-    #         "Use hash indexes when you only need exact-match queries, not ranges or sorts."
-    #     ),
-    #     "start_time": 82.0,
-    #     "end_time": 95.0,
-    # },
+    {
+        "meeting_id": "test-meeting-001",
+        "chunk_index": 5,
+        "text": (
+            "Hash indexes use a hash function to map keys to buckets. Lookup is O(1) on average for equality checks. "
+            "Hash indexes are excellent for point lookups but cannot support range queries or ordering. "
+            "Collision handling: chaining links items in the same bucket; open addressing finds another slot. "
+            "Use hash indexes when you only need exact-match queries, not ranges or sorts."
+        ),
+        "start_time": 82.0,
+        "end_time": 95.0,
+    },
     # {
     #     "meeting_id": "test-meeting-001",
     #     "chunk_index": 6,
