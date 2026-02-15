@@ -28,6 +28,25 @@ Given a transcript segment that explains a single concept, output JSON:
 
 Output ONLY valid JSON, no other text."""
 
+SEGMENT_BOUNDARIES_SYSTEM = """You are an expert at analyzing lecture transcripts and identifying topic boundaries.
+
+Given a full lecture transcript (with chunk indices), identify where the instructor moves from one concept to another.
+
+Output JSON with an array of segment boundaries:
+- segments: array of objects, each with { "start_chunk": int, "end_chunk": int, "concept_hint": str }
+
+Example: if chunks 0-2 cover ACID, 3-6 cover normalization, 7-10 cover SQL joins:
+{
+  "segments": [
+    { "start_chunk": 0, "end_chunk": 2, "concept_hint": "ACID properties" },
+    { "start_chunk": 3, "end_chunk": 6, "concept_hint": "Normalization" },
+    { "start_chunk": 7, "end_chunk": 10, "concept_hint": "SQL joins" }
+  ]
+}
+
+Be conservative: only create a new segment when there is a clear topic shift.
+Output ONLY valid JSON, no other text."""
+
 
 class LLMClient:
     def __init__(
@@ -94,6 +113,41 @@ Output JSON: {{ "title": str, "short_explain": str, "example": str }}"""
         )
         text = resp.choices[0].message.content
         return _parse_json(text)
+
+    def identify_segment_boundaries(
+        self,
+        chunks: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """
+        Given a list of chunks (with chunk_index and text), identify topic boundaries.
+        Returns a list of segments: [{ start_chunk, end_chunk, concept_hint }, ...]
+        """
+        self._ensure_client()
+        if not chunks:
+            return []
+        # Build transcript with chunk markers
+        lines = []
+        for c in sorted(chunks, key=lambda x: x.get("chunk_index", 0)):
+            idx = c.get("chunk_index", 0)
+            text = c.get("text", "").strip()
+            lines.append(f"[Chunk {idx}]\n{text}")
+        transcript = "\n\n".join(lines)
+        user = f"""Full lecture transcript:
+
+{transcript[:8000]}
+
+Output JSON: {{ "segments": [ {{ "start_chunk": int, "end_chunk": int, "concept_hint": str }}, ... ] }}"""
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": SEGMENT_BOUNDARIES_SYSTEM},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.2,
+        )
+        text = resp.choices[0].message.content
+        result = _parse_json(text)
+        return result.get("segments", [])
 
 
 def _parse_json(text: str) -> dict[str, Any]:

@@ -50,7 +50,7 @@ config = get_config()
 # uAgent
 agent = Agent(
     name="concept-card-agent",
-    seed=config.agent.seed or "concept_card_agent_seed_phrase_replace_in_production",
+    seed=config.agent.seed or "concept_card_agent_seed_phrase_replace_in_production_v1",
     port=config.agent.port,
     mailbox=True,
     publish_agent_details=True,
@@ -97,12 +97,12 @@ def create_concept_card(
     meeting_id: str,
     segment_chunks: list[dict[str, Any]],
     concept_id: str | None = None,
-) -> str | None:
+) -> dict[str, Any] | None:
     """
     Tool: create_concept_card.
     Takes a completed concept segment, extracts title/short_explain/example via LLM,
     indexes to ta-da-concept-cards.
-    Returns document ID or None on failure.
+    Returns dict with doc_id, concept_id, title, short_explain, example; or None on failure.
     """
     if not segment_chunks:
         logger.warning("create_concept_card: empty segment_chunks")
@@ -147,7 +147,13 @@ def create_concept_card(
             timestamp=now,
         )
         logger.info("create_concept_card: indexed %s for meeting %s", doc_id, meeting_id)
-        return doc_id
+        return {
+            "doc_id": doc_id,
+            "concept_id": concept_id,
+            "title": title,
+            "short_explain": short_explain,
+            "example": example,
+        }
     except Exception as e:
         logger.error("create_concept_card: index failed: %s", e)
         return None
@@ -250,6 +256,104 @@ def _run_detection_for_meeting(
     )
 
 
+def run_manual_concept_card_creation(ctx: Context) -> str:
+    """
+    Manual tool: create concept cards for the latest meeting.
+    
+    Flow:
+    1. Get latest meeting_id
+    2. Fetch all chunks for that meeting
+    3. Identify segment boundaries (LLM one-shot)
+    4. For each segment, create_concept_card
+    5. Return summary
+    """
+    try:
+        es = get_elastic()
+        llm = get_llm()
+    except RuntimeError as e:
+        logger.error("run_manual_concept_card_creation: %s", e)
+        return f"Error: {e}"
+
+    # 1. Get latest meeting_id
+    try:
+        meeting_id = es.get_latest_meeting_id()
+        if not meeting_id:
+            return "No chunks found in ta-da-latest. Index some transcript chunks first."
+    except Exception as e:
+        logger.error("run_manual_concept_card_creation: get_latest_meeting_id failed: %s", e)
+        return f"Error fetching latest meeting: {e}"
+
+    ctx.logger.info("run_manual_concept_card_creation: latest meeting_id=%s", meeting_id)
+
+    # 2. Fetch all chunks for that meeting
+    try:
+        chunks = es.fetch_all_chunks_for_meeting(meeting_id, limit=1000)
+        if not chunks:
+            return f"No chunks found for meeting {meeting_id}."
+    except Exception as e:
+        logger.error("run_manual_concept_card_creation: fetch chunks failed: %s", e)
+        return f"Error fetching chunks: {e}"
+
+    ctx.logger.info("run_manual_concept_card_creation: fetched %d chunks", len(chunks))
+
+    # 3. Identify segment boundaries
+    try:
+        segments = llm.identify_segment_boundaries(chunks)
+        if not segments:
+            return f"No concept segments detected in meeting {meeting_id}."
+    except Exception as e:
+        logger.error("run_manual_concept_card_creation: segment detection failed: %s", e)
+        return f"Error detecting segments: {e}"
+
+    ctx.logger.info("run_manual_concept_card_creation: found %d segments", len(segments))
+
+    # 4. Create concept cards for each segment and collect for formatted response
+    created_cards: list[dict[str, Any]] = []
+    for seg in segments:
+        start_idx = seg.get("start_chunk", 0)
+        end_idx = seg.get("end_chunk", 0)
+        concept_hint = seg.get("concept_hint", "")
+        segment_chunks = [
+            c for c in chunks if start_idx <= c.get("chunk_index", 0) <= end_idx
+        ]
+        if not segment_chunks:
+            continue
+        concept_id = _slug(concept_hint) if concept_hint else None
+        card = create_concept_card(
+            meeting_id=meeting_id,
+            segment_chunks=segment_chunks,
+            concept_id=concept_id,
+        )
+        if card:
+            created_cards.append(card)
+            ctx.logger.info(
+                "run_manual_concept_card_creation: created card %s (%s)",
+                card["doc_id"],
+                concept_hint,
+            )
+
+    # Return summary + formatted list of concept cards
+    if not created_cards:
+        return f"No concept cards were created for meeting {meeting_id}."
+    lines = [
+        f"Created **{len(created_cards)}** concept cards for meeting `{meeting_id}`.",
+        "",
+        "---",
+        "",
+    ]
+    for i, c in enumerate(created_cards, 1):
+        title = c.get("title", "Untitled")
+        short = c.get("short_explain", "").strip()
+        ex = c.get("example", "").strip()
+        lines.append(f"### {i}. {title}")
+        if short:
+            lines.append(f"{short}")
+        if ex:
+            lines.append(f"*Example:* {ex}")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
 # Chat Protocol (GigMart-style)
 chat_proto = Protocol(spec=chat_protocol_spec)
 
@@ -277,11 +381,19 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
     if not user_text:
         user_text = "(empty message)"
     ctx.logger.info("Chat from %s: %s", sender[:16] + "...", user_text[:80])
-    response = (
-        "I'm the Concept Card Agent. I detect when lecture concepts are completed "
-        "and create concept cards from transcripts. You can ask me to run detection "
-        "or create a card, or just chat."
-    )
+    
+    # Detect intent: manual concept card creation
+    lower = user_text.lower()
+    if any(kw in lower for kw in ["create concept card", "generate concept card", "run detection", "detect concept", "make card"]):
+        ctx.logger.info("run_manual_concept_card_creation triggered by chat")
+        response = run_manual_concept_card_creation(ctx)
+    else:
+        response = (
+            "I'm the Concept Card Agent. I detect when lecture concepts are completed "
+            "and create concept cards from transcripts. Ask me to 'create concept cards' "
+            "to generate cards from the latest meeting."
+        )
+    
     await ctx.send(sender, create_text_chat(response))
 
 

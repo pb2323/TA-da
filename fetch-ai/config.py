@@ -8,9 +8,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env from repo root
+# Load .env from repo root (override=True so .env.local wins over shell env vars)
 _env_path = Path(__file__).resolve().parent.parent / ".env.local"
-load_dotenv(_env_path)
+load_dotenv(_env_path, override=True)
 
 from pydantic import BaseModel, Field
 

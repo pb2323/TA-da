@@ -65,6 +65,34 @@ class ElasticClient:
         hits = resp.get("hits", {}).get("hits", [])
         return [h.get("_source", {}) for h in hits]
 
+    def get_latest_meeting_id(self) -> str | None:
+        """Get the latest meeting_id by fetching the most recent chunk from ta-da-latest."""
+        self._ensure_client()
+        resp = self.client.search(
+            index=INDEX_TA_DA_LATEST,
+            query={"match_all": {}},
+            size=1,
+            sort=[{"received_at": "desc"}],
+            _source=["meeting_id"],
+        )
+        hits = resp.get("hits", {}).get("hits", [])
+        if not hits:
+            return None
+        return hits[0].get("_source", {}).get("meeting_id")
+
+    def fetch_all_chunks(self, limit: int = 1000) -> list[dict[str, Any]]:
+        """Fetch all chunks from ta-da-latest (across all meetings), ordered by chunk_index."""
+        self._ensure_client()
+        resp = self.client.search(
+            index=INDEX_TA_DA_LATEST,
+            query={"match_all": {}},
+            size=limit,
+            sort=[{"meeting_id": "asc"}, {"chunk_index": "asc"}],
+            _source_excludes=[],
+        )
+        hits = resp.get("hits", {}).get("hits", [])
+        return [{"_id": h["_id"], **h.get("_source", {})} for h in hits]
+
     def load_agent_state(self, meeting_id: str) -> dict[str, Any] | None:
         """Load per-meeting state: last_chunk_index, last_topic_summary."""
         self._ensure_client()
