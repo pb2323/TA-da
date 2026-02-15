@@ -279,6 +279,30 @@
   }
 
   /**
+   * Format agent response: markdown-like to HTML (bold, paragraphs, lists)
+   */
+  function formatAgentResponse(text) {
+    if (!text || typeof text !== 'string') return '';
+    let t = escapeHtml(text);
+    const fmt = (s) => s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+    const paragraphs = t.split(/\n\n+/);
+    const blocks = [];
+    for (const p of paragraphs) {
+      const trimmed = p.trim();
+      if (!trimmed) continue;
+      const listLines = trimmed.split('\n').filter((l) => /^[\s]*[-*•]\s+/.test(l));
+      if (listLines.length > 0 && listLines.length === trimmed.split('\n').length) {
+        const items = listLines.map((l) => fmt(l.replace(/^[\s]*[-*•]\s+/, '')));
+        blocks.push('<ul><li>' + items.join('</li><li>') + '</li></ul>');
+      } else {
+        const html = fmt(trimmed).replace(/\n/g, '<br>');
+        blocks.push('<p>' + html + '</p>');
+      }
+    }
+    return blocks.join('');
+  }
+
+  /**
    * Append a message to the chat UI
    * @param {string} role - 'user' | 'agent' | 'error'
    * @param {string} text - Message text
@@ -295,11 +319,39 @@
     if (!elements.chatMessages) return;
     const div = document.createElement('div');
     div.className = `chat-bubble chat-bubble-${msg.role}`;
+    const content = msg.role === 'agent'
+      ? formatAgentResponse(msg.text)
+      : escapeHtml(msg.text);
+    div.innerHTML = `<div class="chat-bubble-inner">${content}</div>`;
+    elements.chatMessages.appendChild(div);
+    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  }
+
+  /**
+   * Show loading bubble with animated dots in chat area
+   */
+  function showChatLoadingBubble() {
+    if (!elements.chatMessages) return;
+    const div = document.createElement('div');
+    div.className = 'chat-bubble chat-bubble-agent chat-bubble-loading';
+    div.id = 'chatLoadingBubble';
     div.innerHTML = `
-      <div class="chat-bubble-inner">${escapeHtml(msg.text)}</div>
+      <div class="chat-bubble-inner">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
     `;
     elements.chatMessages.appendChild(div);
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  }
+
+  /**
+   * Remove loading bubble from chat area
+   */
+  function hideChatLoadingBubble() {
+    const el = document.getElementById('chatLoadingBubble');
+    if (el) el.remove();
   }
 
   /**
@@ -313,7 +365,7 @@
   }
 
   /**
-   * Set loading state for chat submit
+   * Set loading state for chat submit (button + loading bubble)
    */
   function setChatLoading(loading) {
     state.isChatLoading = loading;
@@ -321,7 +373,7 @@
       elements.submitQuestionBtn.disabled = loading;
     }
     if (elements.chatLoading) {
-      elements.chatLoading.style.display = loading ? 'inline' : 'none';
+      elements.chatLoading.style.display = loading ? 'flex' : 'none';
     }
     const textSpan = elements.submitQuestionBtn?.querySelector('#submitBtnText');
     if (textSpan) {
@@ -330,6 +382,11 @@
     const arrow = elements.submitQuestionBtn?.querySelector('.btn-arrow');
     if (arrow) {
       arrow.style.display = loading ? 'none' : 'block';
+    }
+    if (loading) {
+      showChatLoadingBubble();
+    } else {
+      hideChatLoadingBubble();
     }
   }
 
