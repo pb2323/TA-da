@@ -412,7 +412,6 @@
     appendChatMessage('user', question);
     state.questionsAsked++;
     updateSessionInfo();
-    addStudentQuestionCard(question);
 
     setChatLoading(true);
 
