@@ -1,0 +1,14 @@
+{
+  "settings": { "number_of_shards": 1, "number_of_replicas": 0 },
+  "mappings": {
+    "dynamic": "false",
+    "properties": {
+      "session_id": { "type": "keyword" },
+      "top_concept_id": { "type": "keyword" },
+      "top_concept_title": { "type": "text", "fields": { "keyword": { "type": "keyword", "ignore_above": 512 } } },
+      "re_explain_suggestion": { "type": "text" },
+      "poll_question": { "type": "text" },
+      "updated_at": { "type": "date", "format": "strict_date_optional_time||epoch_millis" }
+    }
+  }
+}

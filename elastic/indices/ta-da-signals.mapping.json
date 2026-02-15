@@ -1,0 +1,13 @@
+{
+  "settings": { "number_of_shards": 1, "number_of_replicas": 0 },
+  "mappings": {
+    "dynamic": "false",
+    "properties": {
+      "session_id": { "type": "keyword" },
+      "user_id": { "type": "keyword" },
+      "concept_id": { "type": "keyword" },
+      "signal_type": { "type": "keyword" },
+      "time": { "type": "date", "format": "strict_date_optional_time||epoch_millis" }
+    }
+  }
+}

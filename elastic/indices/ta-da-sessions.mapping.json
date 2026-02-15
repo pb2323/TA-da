@@ -1,0 +1,12 @@
+{
+  "settings": { "number_of_shards": 1, "number_of_replicas": 0 },
+  "mappings": {
+    "dynamic": "false",
+    "properties": {
+      "session_id": { "type": "keyword" },
+      "meeting_id": { "type": "keyword" },
+      "start_time": { "type": "date", "format": "strict_date_optional_time||epoch_millis" },
+      "active_concept": { "type": "keyword" }
+    }
+  }
+}
