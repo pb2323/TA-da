@@ -1120,6 +1120,7 @@
     try {
       state.isAvatarSpeaking = true;
       updateAvatarStatus('🎤 Avatar is speaking...', 'speaking');
+      updateAvatarUIState(); // Show stop button, hide speak button
       
       const speakBtn = elements.speakBtn;
       if (speakBtn) {
@@ -1155,6 +1156,7 @@
           logger.warn('Avatar speaking timeout - resetting state');
           state.isAvatarSpeaking = false;
           updateAvatarStatus('✅ Done speaking', 'connected');
+          updateAvatarUIState(); // Hide stop button, show speak button
           const btn = elements.speakBtn;
           if (btn) {
             btn.disabled = false;
@@ -1170,6 +1172,7 @@
       logger.error('Error sending text to avatar:', error);
       updateAvatarStatus(`Error: ${error.message}`, 'error');
       state.isAvatarSpeaking = false;
+      updateAvatarUIState(); // Reset UI state
       const speakBtn = elements.speakBtn;
       if (speakBtn) {
         speakBtn.disabled = false;
@@ -1222,6 +1225,169 @@
         }
       }, 100);
     });
+  }
+
+  /**
+   * Stop avatar from speaking immediately
+   */
+  async function stopAvatarSpeaking() {
+    if (!state.isAvatarSpeaking || !state.avatarRoom) {
+      return;
+    }
+
+    try {
+      logger.info('Stopping avatar speech');
+      state.isAvatarSpeaking = false;
+
+      // Send interrupt event to avatar
+      const event = {
+        event_type: 'avatar.interrupt',
+        session_id: state.avatarSession.session_id
+      };
+
+      const encoder = new TextEncoder();
+      const data = encoder.encode(JSON.stringify(event));
+
+      await state.avatarRoom.localParticipant.publishData(data, {
+        reliable: true,
+        topic: 'agent-control'
+      });
+
+      logger.info('Sent interrupt event to avatar');
+
+      // Update UI
+      updateAvatarStatus('⏹ Stopped', 'connected');
+      
+      const speakBtn = elements.speakBtn;
+      const stopBtn = document.getElementById('stopBtn');
+      if (speakBtn) {
+        speakBtn.disabled = false;
+        const speakText = speakBtn.querySelector('#speakBtnText');
+        if (speakText) speakText.style.display = 'inline';
+        const speakLoading = speakBtn.querySelector('#speakLoading');
+        if (speakLoading) speakLoading.style.display = 'none';
+      }
+      if (stopBtn) {
+        stopBtn.style.display = 'none';
+      }
+      
+    } catch (error) {
+      logger.error('Error stopping avatar:', error);
+      updateAvatarStatus(`Error stopping: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Submit a question to the avatar for real-time Q&A
+   */
+  async function submitAvatarQuestion() {
+    const qaInput = document.getElementById('avatarQuestionInput');
+    const qaSubmitBtn = document.getElementById('avatarQASubmitBtn');
+
+    if (!qaInput || !qaInput.value.trim()) {
+      alert('Please enter a question');
+      return;
+    }
+
+    if (!state.isAvatarConnected) {
+      alert('Avatar is not connected. Please initialize first.');
+      return;
+    }
+
+    if (state.isAvatarSpeaking) {
+      alert('Avatar is currently speaking. Please wait.');
+      return;
+    }
+
+    const question = qaInput.value.trim();
+    
+    try {
+      // Show loading state
+      if (qaSubmitBtn) {
+        qaSubmitBtn.disabled = true;
+        const qaSubmitText = qaSubmitBtn.querySelector('#qaSubmitText');
+        const qaLoading = qaSubmitBtn.querySelector('#qaLoading');
+        if (qaSubmitText) qaSubmitText.style.display = 'none';
+        if (qaLoading) qaLoading.style.display = 'inline-flex';
+      }
+
+      updateAvatarStatus('🤔 Thinking...', 'connecting');
+      logger.info('Submitting question to avatar:', question);
+
+      // For now, we'll use a simple echo of the question
+      // In production, this would call the agent endpoint to get a real answer
+      let answer = `Thank you for asking: "${question}". `;
+      
+      // Check if there's an agent endpoint available
+      try {
+        const agentResponse = await fetch('/api/agent/response', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            question: question,
+            context: elements.conceptSelectModal.value ? state.concepts.find(c => c.id === elements.conceptSelectModal.value)?.title : 'general'
+          })
+        });
+
+        if (agentResponse.ok) {
+          const data = await agentResponse.json();
+          if (data.response) {
+            answer = data.response;
+          }
+        } else {
+          // Fallback: provide a thoughtful default response
+          answer += 'This is an interesting question about the concept we\'re exploring. Let me think through this carefully and provide you with a comprehensive answer based on what we\'ve discussed.';
+        }
+      } catch (error) {
+        logger.warn('Agent endpoint not available, using default response:', error);
+        answer += 'This is an interesting question. Let me provide you with a thoughtful answer based on what we\'ve learned.';
+      }
+
+      // Send the response through avatar
+      await sendTextToAvatar(answer);
+
+      // Clear input after sending
+      qaInput.value = '';
+
+      // Reset button
+      if (qaSubmitBtn) {
+        qaSubmitBtn.disabled = false;
+        const qaSubmitText = qaSubmitBtn.querySelector('#qaSubmitText');
+        const qaLoading = qaSubmitBtn.querySelector('#qaLoading');
+        if (qaSubmitText) qaSubmitText.style.display = 'inline';
+        if (qaLoading) qaLoading.style.display = 'none';
+      }
+
+    } catch (error) {
+      logger.error('Error submitting question:', error);
+      updateAvatarStatus(`Error: ${error.message}`, 'error');
+      
+      if (qaSubmitBtn) {
+        qaSubmitBtn.disabled = false;
+        const qaSubmitText = qaSubmitBtn.querySelector('#qaSubmitText');
+        const qaLoading = qaSubmitBtn.querySelector('#qaLoading');
+        if (qaSubmitText) qaSubmitText.style.display = 'inline';
+        if (qaLoading) qaLoading.style.display = 'none';
+      }
+    }
+  }
+
+  /**
+   * Update avatar UI to show/hide stop button based on speaking state
+   */
+  function updateAvatarUIState() {
+    const stopBtn = document.getElementById('stopBtn');
+    const speakBtn = elements.speakBtn;
+
+    if (state.isAvatarSpeaking && stopBtn) {
+      stopBtn.style.display = 'flex';
+      if (speakBtn) speakBtn.style.display = 'none';
+    } else if (stopBtn && speakBtn) {
+      stopBtn.style.display = 'none';
+      speakBtn.style.display = 'flex';
+    }
   }
 
   // ==================== REAL-TIME SIMULATION ====================
@@ -1372,6 +1538,18 @@
         alert('Avatar is not connected. Please wait for initialization.');
       }
     });
+
+    // Stop button
+    const stopBtn = document.getElementById('stopBtn');
+    if (stopBtn) {
+      stopBtn.addEventListener('click', stopAvatarSpeaking);
+    }
+
+    // Q&A submit button
+    const qaSubmitBtn = document.getElementById('avatarQASubmitBtn');
+    if (qaSubmitBtn) {
+      qaSubmitBtn.addEventListener('click', submitAvatarQuestion);
+    }
 
     // Close modals on outside click
     elements.questionModal.addEventListener('click', (e) => {

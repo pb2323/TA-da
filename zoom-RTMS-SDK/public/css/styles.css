@@ -1552,6 +1552,30 @@ body {
   font-size: 18px;
 }
 
+.stop-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #ff4757, #ff6348);
+  border: none;
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stop-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 71, 87, 0.4);
+}
+
+.stop-icon {
+  font-size: 18px;
+}
+
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 1024px) {
   .dashboard-container {
