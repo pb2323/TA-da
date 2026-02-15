@@ -1219,6 +1219,10 @@ body {
 
 .modal-large {
   max-width: 700px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .modal-chat {
@@ -1467,6 +1471,22 @@ body {
   border-radius: 12px;
   min-height: 150px;
   margin-bottom: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.avatar-video-section {
+  margin-bottom: 20px;
+}
+
+#avatar-video {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 12px;
+  display: block;
 }
 
 .explanation-text {
@@ -1478,6 +1498,16 @@ body {
 .avatar-controls {
   display: flex;
   gap: 12px;
+  margin-top: auto;
+}
+
+.avatar-status-text {
+  text-align: center;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #00f5ff;
+  margin-bottom: 10px;
 }
 
 .concept-select {

@@ -209,21 +209,37 @@
     <div class="modal-overlay" id="avatarModal">
         <div class="modal-content glass-panel modal-large">
             <button class="modal-close" id="closeAvatarModal" aria-label="Close">&times;</button>
-            <h2 class="modal-title">Avatar Explanation</h2>
+            <h2 class="modal-title">TA Avatar Explanation</h2>
+            
+            <!-- Avatar Video Container -->
+            <div class="avatar-video-section" id="avatarVideoSection">
+                <video id="avatar-video" autoplay playsinline muted style="width: 100%; border-radius: 12px; background: #000; margin-bottom: 20px;"></video>
+                <div id="avatarStatus" class="avatar-status-text" style="text-align: center; margin-bottom: 15px; color: #00f5ff;">Ready to explain</div>
+            </div>
+
+            <!-- Explanation Text (Fallback) -->
             <div class="avatar-explanation-content" id="avatarExplanationContent">
                 <p class="explanation-text">Select a concept from your timeline to get a detailed explanation...</p>
             </div>
+
+            <!-- Controls -->
             <div class="avatar-controls">
                 <select class="concept-select" id="conceptSelectModal">
                     <option value="">Select a concept...</option>
                 </select>
                 <button class="speak-btn" id="speakBtn">
                     <span class="speak-icon">🔊</span>
-                    <span>Speak Explanation</span>
+                    <span id="speakBtnText">Speak Explanation</span>
+                    <span class="speak-loading" id="speakLoading" style="display: none;">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    </span>
                 </button>
             </div>
         </div>
     </div>
+
+    <!-- LiveKit Client for Avatar streaming (local copy) -->
+    <script src="/livekit-client.umd.js"></script>
 
     <script src="/js/logger.js"></script>
     <script>

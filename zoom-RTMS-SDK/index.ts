@@ -81,6 +81,48 @@ app.post('/api/agent/converse', async (req: Request, res: Response) => {
   }
 });
 
+// Proxy to TA-DA backend LiveAvatar token endpoint
+app.post('/api/liveavatar/token', async (req: Request, res: Response) => {
+  try {
+    const r = await fetch(`${TA_DA_BACKEND_URL}/api/liveavatar/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+    });
+    const data = await r.json().catch(() => ({}));
+    res.status(r.status).json(data);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'liveavatar token proxy failed';
+    logger.error('LiveAvatar token proxy error:', msg);
+    res.status(502).json({ error: msg });
+  }
+});
+
+// Proxy to LiveAvatar sessions/start endpoint (avoids CSP issues)
+app.post('/api/liveavatar/session/start', async (req: Request, res: Response) => {
+  try {
+    const { session_token } = req.body || {};
+    if (!session_token) {
+      return res.status(400).json({ error: 'session_token required' });
+    }
+
+    const r = await fetch('https://api.liveavatar.com/v1/sessions/start', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session_token}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    });
+    const data = await r.json().catch(() => ({}));
+    res.status(r.status).json(data);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'liveavatar session start proxy failed';
+    logger.error('LiveAvatar session start proxy error:', msg);
+    res.status(502).json({ error: msg });
+  }
+});
+
 // Proxy to TA-DA backend concept cards (ta-da-concept-cards index)
 app.get('/api/concept-cards', async (req: Request, res: Response) => {
   try {

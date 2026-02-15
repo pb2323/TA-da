@@ -154,6 +154,69 @@ app.post("/agent/converse", async (req, res) => {
 });
 
 /**
+ * Get LiveAvatar session token
+ * POST /api/liveavatar/token
+ * Returns: { session_token, session_id }
+ */
+app.post("/api/liveavatar/token", async (req, res) => {
+  try {
+    const apiKey = process.env.LIVEAVATAR_API_KEY;
+    const avatarId = process.env.LIVEAVATAR_AVATAR_ID;
+    const voiceId = process.env.LIVEAVATAR_VOICE_ID;
+
+    if (!apiKey || !avatarId || !voiceId) {
+      return res.status(400).json({
+        error: "LiveAvatar configuration missing",
+        details: "LIVEAVATAR_API_KEY, LIVEAVATAR_AVATAR_ID, and LIVEAVATAR_VOICE_ID must be set in .env"
+      });
+    }
+
+    const response = await fetch(
+      "https://api.liveavatar.com/v1/sessions/token",
+      {
+        method: "POST",
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          mode: "FULL",
+          avatar_id: avatarId,
+          avatar_persona: {
+            voice_id: voiceId,
+            language: "en",
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("LiveAvatar API error:", errorText);
+      return res.status(response.status).json({
+        error: "Failed to generate session token",
+        details: errorText,
+      });
+    }
+
+    const data = await response.json();
+    console.log("LiveAvatar token generated successfully");
+
+    res.json({
+      session_token: data.data.session_token,
+      session_id: data.data.session_id,
+    });
+  } catch (error) {
+    console.error("LiveAvatar token error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
+/**
  * Event types from UI:
  * - SIGNAL_SUBMIT   -> ClassOps Agent
  * - QUESTION_SUBMIT -> Tutor Agent

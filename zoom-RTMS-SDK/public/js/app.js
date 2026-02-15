@@ -17,7 +17,13 @@
     reconnectTimer: null,
     sessionTimerInterval: null,
     chatMessages: [],
-    isChatLoading: false
+    isChatLoading: false,
+    // LiveAvatar state
+    avatarSession: null,
+    avatarRoom: null,
+    isAvatarConnected: false,
+    isAvatarSpeaking: false,
+    avatarSessionToken: null
   };
 
   // ==================== DOM ELEMENTS ====================
@@ -792,6 +798,11 @@
   function openAvatarModal(concept = null) {
     elements.avatarModal.classList.add('active');
 
+    // Initialize avatar if not already connected
+    if (!state.isAvatarConnected) {
+      initializeLiveAvatar();
+    }
+
     if (concept) {
       elements.conceptSelectModal.value = concept.id;
       displayExplanation(concept);
@@ -803,6 +814,8 @@
    */
   function closeAvatarModal() {
     elements.avatarModal.classList.remove('active');
+    // Disconnect avatar when closing modal
+    disconnectAvatar();
   }
 
   /**
@@ -884,6 +897,333 @@
     logger.info('Speaking explanation');
   }
 
+  // ==================== LIVEAVATAR INTEGRATION ====================
+  /**
+   * Update avatar status display
+   * @param {string} message - Status message
+   * @param {string} type - Status type (default, connecting, connected, speaking, error)
+   */
+  function updateAvatarStatus(message, type = 'default') {
+    const statusEl = document.getElementById('avatarStatus');
+    if (!statusEl) return;
+    
+    statusEl.textContent = message;
+    statusEl.className = `avatar-status-text avatar-status-${type}`;
+    
+    // Add color styling based on type
+    const colorMap = {
+      'default': '#00f5ff',
+      'connecting': '#ff8500',
+      'connected': '#06ffa5',
+      'speaking': '#ff006e',
+      'error': '#ff0000'
+    };
+    statusEl.style.color = colorMap[type] || '#00f5ff';
+  }
+
+  /**
+   * Initialize LiveAvatar session
+   */
+  async function initializeLiveAvatar() {
+    try {
+      updateAvatarStatus('Initializing avatar session...', 'connecting');
+      const speakBtn = elements.speakBtn;
+      if (speakBtn) speakBtn.disabled = true;
+
+      // Step 1: Get session token from backend
+      logger.info('Requesting LiveAvatar token from backend');
+      const tokenResponse = await fetch('/api/liveavatar/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to get session token (${tokenResponse.status})`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      state.avatarSessionToken = tokenData.session_token;
+      logger.info('Session token received');
+
+      // Step 2: Start LiveAvatar session (via proxy to avoid CSP issues)
+      updateAvatarStatus('Starting avatar session...', 'connecting');
+      logger.info('Starting LiveAvatar session');
+      
+      const startResponse = await fetch(
+        '/api/liveavatar/session/start',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            session_token: state.avatarSessionToken
+          })
+        }
+      );
+
+      if (!startResponse.ok) {
+        throw new Error('Failed to start LiveAvatar session');
+      }
+
+      const sessionData = await startResponse.json();
+      state.avatarSession = sessionData.data;
+      logger.info('Avatar session started:', state.avatarSession);
+
+      // Step 3: Connect to LiveKit
+      updateAvatarStatus('Connecting to video stream...', 'connecting');
+      logger.info('Connecting to LiveKit');
+      
+      await connectAvatarToLiveKit();
+
+      updateAvatarStatus('✅ Avatar ready!', 'connected');
+      if (speakBtn) speakBtn.disabled = false;
+      state.isAvatarConnected = true;
+      
+    } catch (error) {
+      logger.error('LiveAvatar initialization error:', error);
+      updateAvatarStatus(`Error: ${error.message}`, 'error');
+      const speakBtn = elements.speakBtn;
+      if (speakBtn) speakBtn.disabled = true;
+    }
+  }
+
+  /**
+   * Connect to LiveKit for avatar video streaming
+   */
+  async function connectAvatarToLiveKit() {
+    // Wait for LiveKit library to load
+    await waitForLiveKit();
+    
+    // Get the correct reference (could be LiveKit or LivekitClient depending on version)
+    const LK = window.LiveKit || window.LivekitClient;
+    
+    if (!LK) {
+      throw new Error('LiveKit library not available');
+    }
+
+    if (!state.avatarSession) {
+      throw new Error('Avatar session not initialized');
+    }
+
+    // Get LiveKit connection details from session
+    const roomUrl = 
+      state.avatarSession.livekit_url || 
+      state.avatarSession.url || 
+      state.avatarSession.room_url;
+      
+    const roomToken = 
+      state.avatarSession.livekit_token ||
+      state.avatarSession.token ||
+      state.avatarSession.room_token ||
+      state.avatarSession.livekit_client_token;
+
+    if (!roomUrl || !roomToken) {
+      throw new Error('Missing LiveKit connection details from session');
+    }
+
+    // Create and connect LiveKit Room
+    state.avatarRoom = new LK.Room();
+
+    // Handle video track subscription
+    state.avatarRoom.on(
+      LK.RoomEvent.TrackSubscribed,
+      (track, publication, participant) => {
+        logger.info('Track subscribed:', track.kind);
+        
+        if (track.kind === 'video') {
+          const videoElement = document.getElementById('avatar-video');
+          if (videoElement) {
+            track.attach(videoElement);
+            logger.info('Video track attached to element');
+          }
+        }
+
+        if (track.kind === 'audio') {
+          const audioElement = document.createElement('audio');
+          audioElement.autoplay = true;
+          document.body.appendChild(audioElement);
+          track.attach(audioElement);
+          logger.info('Audio track created and attached');
+        }
+      }
+    );
+
+    // Handle disconnection
+    state.avatarRoom.on(LK.RoomEvent.Disconnected, () => {
+      logger.info('Disconnected from avatar room');
+      state.isAvatarConnected = false;
+      updateAvatarStatus('Disconnected from avatar', 'error');
+    });
+
+    // Handle data messages from server
+    state.avatarRoom.on(
+      LK.RoomEvent.DataReceived,
+      (payload, participant, kind, topic) => {
+        if (topic === 'agent-response') {
+          try {
+            const decoder = new TextDecoder();
+            const eventData = JSON.parse(decoder.decode(payload));
+            logger.info('Avatar event received:', eventData);
+
+            switch (eventData.event_type) {
+              case 'avatar.speak_started':
+                updateAvatarStatus('🎤 Avatar is speaking...', 'speaking');
+                state.isAvatarSpeaking = true;
+                break;
+              case 'avatar.speak_ended':
+                updateAvatarStatus('✅ Done speaking', 'connected');
+                state.isAvatarSpeaking = false;
+                const speakBtn = elements.speakBtn;
+                if (speakBtn) {
+                  speakBtn.disabled = false;
+                  const speakText = speakBtn.querySelector('#speakBtnText');
+                  if (speakText) speakText.style.display = 'inline';
+                  const speakLoading = speakBtn.querySelector('#speakLoading');
+                  if (speakLoading) speakLoading.style.display = 'none';
+                }
+                break;
+              case 'avatar.transcription':
+                logger.info('Avatar transcription:', eventData.text);
+                break;
+            }
+          } catch (err) {
+            logger.error('Error parsing avatar event:', err);
+          }
+        }
+      }
+    );
+
+    // Connect to the room
+    logger.info('Connecting to LiveKit room:', roomUrl);
+    await state.avatarRoom.connect(roomUrl, roomToken);
+    logger.info('Successfully connected to LiveKit');
+  }
+
+  /**
+   * Send text to avatar to speak
+   * @param {string} text - Text to speak
+   */
+  async function sendTextToAvatar(text) {
+    if (!state.isAvatarConnected || !state.avatarRoom || !state.avatarSession) {
+      logger.error('Avatar not connected');
+      updateAvatarStatus('Avatar not connected. Please initialize first.', 'error');
+      return;
+    }
+
+    if (state.isAvatarSpeaking) {
+      logger.warn('Avatar is already speaking');
+      return;
+    }
+
+    try {
+      state.isAvatarSpeaking = true;
+      updateAvatarStatus('🎤 Avatar is speaking...', 'speaking');
+      
+      const speakBtn = elements.speakBtn;
+      if (speakBtn) {
+        speakBtn.disabled = true;
+        const speakText = speakBtn.querySelector('#speakBtnText');
+        if (speakText) speakText.style.display = 'none';
+        const speakLoading = speakBtn.querySelector('#speakLoading');
+        if (speakLoading) speakLoading.style.display = 'inline-flex';
+      }
+
+      // Create speak event
+      const event = {
+        event_type: 'avatar.speak_text',
+        session_id: state.avatarSession.session_id,
+        text: text
+      };
+
+      // Send via LiveKit data channel
+      const encoder = new TextEncoder();
+      const data = encoder.encode(JSON.stringify(event));
+
+      await state.avatarRoom.localParticipant.publishData(data, {
+        reliable: true,
+        topic: 'agent-control'
+      });
+
+      logger.info('Sent speak event to avatar');
+
+      // Fallback timeout in case server event doesn't arrive
+      const estimatedDuration = Math.max(3000, text.length * 40);
+      setTimeout(() => {
+        if (state.isAvatarSpeaking) {
+          logger.warn('Avatar speaking timeout - resetting state');
+          state.isAvatarSpeaking = false;
+          updateAvatarStatus('✅ Done speaking', 'connected');
+          const btn = elements.speakBtn;
+          if (btn) {
+            btn.disabled = false;
+            const btnText = btn.querySelector('#speakBtnText');
+            if (btnText) btnText.style.display = 'inline';
+            const loading = btn.querySelector('#speakLoading');
+            if (loading) loading.style.display = 'none';
+          }
+        }
+      }, estimatedDuration);
+      
+    } catch (error) {
+      logger.error('Error sending text to avatar:', error);
+      updateAvatarStatus(`Error: ${error.message}`, 'error');
+      state.isAvatarSpeaking = false;
+      const speakBtn = elements.speakBtn;
+      if (speakBtn) {
+        speakBtn.disabled = false;
+        const speakText = speakBtn.querySelector('#speakBtnText');
+        if (speakText) speakText.style.display = 'inline';
+        const speakLoading = speakBtn.querySelector('#speakLoading');
+        if (speakLoading) speakLoading.style.display = 'none';
+      }
+    }
+  }
+
+  /**
+   * Disconnect from avatar
+   */
+  async function disconnectAvatar() {
+    if (state.avatarRoom) {
+      await state.avatarRoom.disconnect();
+      state.avatarRoom = null;
+      state.isAvatarConnected = false;
+      state.isAvatarSpeaking = false;
+      logger.info('Avatar disconnected');
+    }
+  }
+
+  /**
+   * Wait for LiveKit client library to load
+   */
+  function waitForLiveKit() {
+    return new Promise((resolve, reject) => {
+      if (typeof window.LiveKit !== 'undefined' || typeof window.LivekitClient !== 'undefined') {
+        logger.info('LiveKit library already loaded');
+        resolve();
+        return;
+      }
+      
+      let attempts = 0;
+      const maxAttempts = 100; // 10 seconds max
+      const checkInterval = setInterval(() => {
+        attempts++;
+        logger.debug(`Waiting for LiveKit library... attempt ${attempts}/${maxAttempts}`);
+        
+        if (typeof window.LiveKit !== 'undefined' || typeof window.LivekitClient !== 'undefined') {
+          clearInterval(checkInterval);
+          logger.info('LiveKit library loaded successfully');
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          logger.error('LiveKit library failed to load after 10 seconds');
+          reject(new Error('LiveKit library failed to load from CDN. Check your internet connection or browser console for errors.'));
+        }
+      }, 100);
+    });
+  }
+
   // ==================== REAL-TIME SIMULATION ====================
   /**
    * Simulate real-time data stream for demo
@@ -894,32 +1234,38 @@
       {
         title: 'Bayes\' Theorem',
         description: 'A mathematical formula for determining conditional probability. It describes the probability of an event based on prior knowledge of conditions related to the event.',
-        confidence: 87
+        confidence: 87,
+        avatarExplanation: 'Hello! Let me explain Bayes\' Theorem. This is a fundamental concept in probability and machine learning. Bayes\' Theorem helps us update our beliefs based on new evidence. In simple terms, it tells us how to calculate the probability of something happening given that we already know something else happened. For example, if I know it rained yesterday, what\'s the probability it will rain today? Bayes\' Theorem helps us answer questions like this by combining what we know before with what we observe now. This is incredibly powerful in machine learning because it allows us to make smarter predictions. Remember, the key insight is that we\'re updating our original belief with new information. That\'s what makes it so useful in real-world applications!'
       },
       {
         title: 'Machine Learning Pipeline',
         description: 'A sequence of data processing steps that automates the workflow of a predictive model. It includes data preprocessing, feature engineering, model training, and evaluation.',
-        confidence: 92
+        confidence: 92,
+        avatarExplanation: 'Great question about the Machine Learning Pipeline! Think of it like an assembly line in a factory. Data comes in one end and predictions come out the other. The pipeline has several stages. First, we clean the data and prepare it. We call this preprocessing. Next, we engineer features, which means we create useful variables from our raw data. Then we train our model using this prepared data. Finally, we evaluate how well it works. The beauty of a pipeline is that it\'s automated and repeatable. When new data comes in, it goes through all these steps automatically. This ensures consistency and makes our work much more efficient. In production systems, pipelines run continuously, updating models and making predictions without human intervention.'
       },
       {
         title: 'Gradient Descent',
         description: 'An optimization algorithm used to minimize the cost function in machine learning. It iteratively adjusts parameters to find the minimum value.',
-        confidence: 78
+        confidence: 78,
+        avatarExplanation: 'Let me walk you through Gradient Descent. Imagine you\'re standing on a hill in the fog, and you want to get to the valley. You can\'t see the whole landscape, so you look at the ground around you and take a step downhill. Then you repeat. That\'s essentially what gradient descent does! In machine learning, instead of a physical hill, we have a cost function. This function measures how wrong our model is. Gradient descent calculates the slope at our current position and takes a step in the direction that reduces the cost. We repeat this process many times until we reach a minimum, which means our model makes the fewest mistakes. The size of each step we take is called the learning rate. If it\'s too small, we move very slowly. If it\'s too large, we might overshoot and miss the valley. Understanding this concept is crucial because gradient descent is used to train most machine learning models today!'
       },
       {
         title: 'Overfitting vs Underfitting',
         description: 'Overfitting occurs when a model learns training data too well, including noise. Underfitting happens when a model is too simple to capture the underlying pattern.',
-        confidence: 85
+        confidence: 85,
+        avatarExplanation: 'This is one of the most important concepts in machine learning, so pay attention! Imagine you\'re learning to identify cats from pictures. Overfitting is like memorizing every single cat photo you see, including every little detail that\'s unique to those specific photos. When you see a new cat you\'ve never seen before, you fail because you memorized the details rather than learning what makes a cat a cat. Underfitting is the opposite problem. It\'s like someone told you cats are round and that\'s all you remember. You miss the ears, the whiskers, all the important features. So you end up misclassifying many things. The goal is to find the sweet spot in the middle. We want our model to learn the essential patterns without memorizing noise. This balance between overfitting and underfitting is key to building models that work well on new, unseen data!'
       },
       {
         title: 'Feature Engineering',
         description: 'The process of selecting, creating, and transforming variables to improve model performance. It involves domain knowledge and creativity.',
-        confidence: 90
+        confidence: 90,
+        avatarExplanation: 'Feature Engineering is where the magic happens in machine learning! You see, raw data is often not very useful for models. We need to transform it into meaningful features that help our model learn better. Let me give you an example. If you want to predict house prices, you might have the date the house was built. But the year itself might not be very useful. Instead, you could create a feature for the age of the house. That\'s more meaningful for predictions! Feature engineering requires both technical skills and domain knowledge. You need to understand your data and your problem deeply. Sometimes a single clever feature can dramatically improve your model\'s performance. In fact, many machine learning competitions are won not by using fancy algorithms, but by creating better features. So remember, garbage in means garbage out. Invest time in feature engineering, and your models will thank you!'
       },
       {
         title: 'Cross-Validation',
         description: 'A technique to assess model performance by splitting data into training and validation sets multiple times. It helps ensure the model generalizes well.',
-        confidence: 83
+        confidence: 83,
+        avatarExplanation: 'Let me explain Cross-Validation, a technique that every data scientist should master. Imagine you\'re studying for an exam. You read a textbook and then take a practice test from that same textbook. You might feel confident, but when you take a test from a different source, you might do poorly. That\'s the problem we\'re trying to avoid with cross-validation. Cross-validation works like this: we split our data into multiple chunks. Then we train on some chunks and test on the remaining chunks. We do this several times, rotating which chunks we use for testing. This way, every piece of data gets used for both training and testing. The benefit is that we get a more reliable estimate of how well our model will perform on brand new data it\'s never seen before. The most common approach is k-fold cross-validation, where k is typically 5 or 10. This technique is essential for building models that truly generalize well!'
       }
     ];
 
@@ -1001,7 +1347,31 @@
     elements.avatarExplainBtn.addEventListener('click', () => openAvatarModal());
     elements.closeAvatarModal.addEventListener('click', closeAvatarModal);
     elements.conceptSelectModal.addEventListener('change', handleConceptSelect);
-    elements.speakBtn.addEventListener('click', speakExplanation);
+    elements.speakBtn.addEventListener('click', () => {
+      // Get selected concept
+      const conceptId = elements.conceptSelectModal.value;
+      if (!conceptId) {
+        alert('Please select a concept first');
+        return;
+      }
+
+      // Find the concept
+      const concept = state.concepts.find(c => c.id === conceptId);
+      if (!concept) {
+        alert('Concept not found');
+        return;
+      }
+
+      // Get the avatar explanation or fall back to description
+      const textToSpeak = concept.avatarExplanation || concept.description;
+
+      // Send to avatar
+      if (state.isAvatarConnected) {
+        sendTextToAvatar(textToSpeak);
+      } else {
+        alert('Avatar is not connected. Please wait for initialization.');
+      }
+    });
 
     // Close modals on outside click
     elements.questionModal.addEventListener('click', (e) => {
