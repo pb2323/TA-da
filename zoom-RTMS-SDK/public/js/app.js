@@ -15,7 +15,9 @@
     questionsAsked: 0,
     ws: null,
     reconnectTimer: null,
-    sessionTimerInterval: null
+    sessionTimerInterval: null,
+    chatMessages: [],
+    isChatLoading: false
   };
 
   // ==================== DOM ELEMENTS ====================
@@ -50,6 +52,8 @@
     closeQuestionModal: document.getElementById('closeQuestionModal'),
     questionInput: document.getElementById('questionInput'),
     submitQuestionBtn: document.getElementById('submitQuestionBtn'),
+    chatMessages: document.getElementById('chatMessages'),
+    chatLoading: document.getElementById('chatLoading'),
 
     avatarModal: document.getElementById('avatarModal'),
     closeAvatarModal: document.getElementById('closeAvatarModal'),
@@ -254,7 +258,9 @@
   }
 
 
-  // ==================== ASK QUESTION MODAL ====================
+  // ==================== ASK QUESTION MODAL (CHATBOT) ====================
+  const API_CONVERSE = '/api/agent/converse';
+
   /**
    * Open the ask question modal
    */
@@ -262,6 +268,7 @@
     elements.questionModal.classList.add('active');
     elements.questionInput.value = '';
     elements.questionInput.focus();
+    renderChatMessages();
   }
 
   /**
@@ -272,31 +279,111 @@
   }
 
   /**
-   * Submit student question
+   * Append a message to the chat UI
+   * @param {string} role - 'user' | 'agent' | 'error'
+   * @param {string} text - Message text
    */
-  function submitQuestion() {
-    const question = elements.questionInput.value.trim();
+  function appendChatMessage(role, text) {
+    state.chatMessages.push({ role, text, timestamp: Date.now() });
+    renderChatMessage(state.chatMessages[state.chatMessages.length - 1]);
+  }
 
-    if (!question) {
-      return;
+  /**
+   * Render a single message bubble
+   */
+  function renderChatMessage(msg) {
+    if (!elements.chatMessages) return;
+    const div = document.createElement('div');
+    div.className = `chat-bubble chat-bubble-${msg.role}`;
+    div.innerHTML = `
+      <div class="chat-bubble-inner">${escapeHtml(msg.text)}</div>
+    `;
+    elements.chatMessages.appendChild(div);
+    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  }
+
+  /**
+   * Re-render all chat messages (e.g. when opening modal)
+   */
+  function renderChatMessages() {
+    if (!elements.chatMessages) return;
+    elements.chatMessages.innerHTML = '';
+    state.chatMessages.forEach(renderChatMessage);
+    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  }
+
+  /**
+   * Set loading state for chat submit
+   */
+  function setChatLoading(loading) {
+    state.isChatLoading = loading;
+    if (elements.submitQuestionBtn) {
+      elements.submitQuestionBtn.disabled = loading;
     }
+    if (elements.chatLoading) {
+      elements.chatLoading.style.display = loading ? 'inline' : 'none';
+    }
+    const textSpan = elements.submitQuestionBtn?.querySelector('#submitBtnText');
+    if (textSpan) {
+      textSpan.style.display = loading ? 'none' : 'inline';
+    }
+    const arrow = elements.submitQuestionBtn?.querySelector('.btn-arrow');
+    if (arrow) {
+      arrow.style.display = loading ? 'none' : 'block';
+    }
+  }
 
-    // Add question to timeline
-    addStudentQuestionCard(question);
+  /**
+   * Extract agent response message from converse API response
+   */
+  function extractAgentMessage(data) {
+    if (data?.response?.message) return String(data.response.message);
+    if (data?.message) return String(data.message);
+    if (data?.output) return String(data.output);
+    if (typeof data === 'string') return data;
+    return 'I could not generate a response. Please try again.';
+  }
 
-    // Increment questions counter
+  /**
+   * Submit student question (chat)
+   */
+  async function submitQuestion() {
+    const question = elements.questionInput.value.trim();
+    if (!question || state.isChatLoading) return;
+
+    elements.questionInput.value = '';
+    appendChatMessage('user', question);
     state.questionsAsked++;
     updateSessionInfo();
+    addStudentQuestionCard(question);
 
-    // Close modal
-    closeQuestionModal();
+    setChatLoading(true);
 
-    logger.info('Question submitted:', question);
+    try {
+      const res = await fetch(API_CONVERSE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: question, agent_id: 'tada-agent' }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    // In production, send to backend via WebSocket
-    // if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-    //   state.ws.send(JSON.stringify({ type: 'question', text: question }));
-    // }
+      if (!res.ok) {
+        const errMsg = data?.error || `Backend error (${res.status})`;
+        appendChatMessage('error', errMsg + '. Is the TA-DA backend running? Start it with: npm run dev in the backend folder.');
+        logger.error('Converse API error:', errMsg);
+        return;
+      }
+
+      const agentText = extractAgentMessage(data);
+      appendChatMessage('agent', agentText);
+      logger.info('Agent response received');
+    } catch (err) {
+      const msg = err?.message || 'Network error';
+      appendChatMessage('error', msg + '. Make sure the TA-DA backend is running at http://localhost:3000');
+      logger.error('Converse fetch failed:', err);
+    } finally {
+      setChatLoading(false);
+    }
   }
 
   /**
@@ -688,9 +775,10 @@
     elements.closeQuestionModal.addEventListener('click', closeQuestionModal);
     elements.submitQuestionBtn.addEventListener('click', submitQuestion);
 
-    // Enter key in question input
+    // Enter to send, Shift+Enter for newline
     elements.questionInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.ctrlKey) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
         submitQuestion();
       }
     });

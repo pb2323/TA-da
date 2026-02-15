@@ -62,6 +62,25 @@ app.post('/webhook', (req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
+// Proxy to TA-DA backend agent converse API (avoids CORS, centralizes backend URL)
+const TA_DA_BACKEND_URL = process.env.TA_DA_BACKEND_URL || 'http://localhost:3000';
+
+app.post('/api/agent/converse', async (req: Request, res: Response) => {
+  try {
+    const r = await fetch(`${TA_DA_BACKEND_URL}/agent/converse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+    });
+    const data = await r.json().catch(() => ({}));
+    res.status(r.status).json(data);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'converse proxy failed';
+    logger.error('Agent converse proxy error:', msg);
+    res.status(502).json({ error: msg });
+  }
+});
+
 // Start the HTTP server
 server.listen(PORT, () => {
   logger.success(`🚀 Server running on port ${PORT}`);

@@ -1,0 +1,1 @@
+{"settings":{"number_of_shards":1,"number_of_replicas":0},"mappings":{"dynamic":"false","properties":{"meeting_id":{"type":"keyword"},"last_chunk_index":{"type":"integer"},"last_topic_summary":{"type":"text"},"updated_at":{"type":"date","format":"strict_date_optional_time||epoch_millis"}}}}

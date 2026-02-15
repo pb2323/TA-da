@@ -179,23 +179,27 @@
         </main>
     </div>
 
-    <!-- Ask Question Modal -->
+    <!-- Ask Question Modal (Chatbot) -->
     <div class="modal-overlay" id="questionModal">
-        <div class="modal-content glass-panel">
+        <div class="modal-content glass-panel modal-chat">
             <button class="modal-close" id="closeQuestionModal" aria-label="Close">&times;</button>
             <h2 class="modal-title">Ask a Question</h2>
-            <textarea
-                class="question-input"
-                id="questionInput"
-                placeholder="Type your question here..."
-                rows="6"
-            ></textarea>
-            <button class="modal-submit-btn" id="submitQuestionBtn">
-                <span>Submit Question</span>
-                <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-            </button>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-area">
+                <textarea
+                    class="question-input chat-input"
+                    id="questionInput"
+                    placeholder="Type your question here..."
+                    rows="2"
+                ></textarea>
+                <button class="modal-submit-btn chat-submit-btn" id="submitQuestionBtn">
+                    <span id="submitBtnText">Send</span>
+                    <span class="chat-loading" id="chatLoading" aria-hidden="true">Thinking...</span>
+                    <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
